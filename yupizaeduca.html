@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<!-- saved from url=(0048)file:///C:/Users/LENOVO/Desktop/yupizaeduca.html -->
+<html lang="es" class="dark"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YupizaEduca — Semáforo de Riesgo Multidisciplinario (Felt + ArcGIS Orbital)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="./yupizaeduca_files/saved_resource"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+  <link href="./yupizaeduca_files/css2" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            space: {
+              950: '#050811',
+              900: '#0A0F1E',
+              850: '#0F172A',
+              800: '#162038',
+              700: '#1E2B4A',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Estilos base del centro de control aeroespacial */
+    body {
+      background-color: #050811;
+      color: #F1F5F9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Cuadrícula sutil de fondo orbital */
+    .orbital-grid-bg {
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 45%),
+        linear-gradient(to right, rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    /* Personalización de sliders de telemetría */
+    input[type="range"].telemetry-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #1E293B;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].telemetry-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38BDF8;
+      border: 2px solid #0F172A;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    input[type="range"].telemetry-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+      background: #7DD3FC;
+    }
+
+    input[type="range"].telemetry-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38BDF8;
+      border: 2px solid #0F172A;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+
+    /* Animación de pulso para polígonos activos y luces del semáforo */
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 1; }
+    }
+
+    .lamp-active-green {
+      background-color: #10B981;
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.85), inset 0 0 8px rgba(255, 255, 255, 0.6);
+      animation: pulseGlow 2s infinite;
+    }
+
+    .lamp-active-yellow {
+      background-color: #F59E0B;
+      box-shadow: 0 0 22px rgba(245, 158, 11, 0.85), inset 0 0 8px rgba(255, 255, 255, 0.6);
+      animation: pulseGlow 1.8s infinite;
+    }
+
+    .lamp-active-red {
+      background-color: #EF4444;
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 8px rgba(255, 255, 255, 0.6);
+      animation: pulseGlow 1.1s infinite;
+    }
+
+    /* Polígonos interactivos en mapa estilo Felt */
+    .felt-polygon {
+      transition: fill-opacity 0.25s ease, stroke-width 0.25s ease, filter 0.25s ease;
+      cursor: pointer;
+    }
+
+    .felt-polygon:hover {
+      fill-opacity: 0.45;
+    }
+
+    /* Evitar selección de texto durante arrastre del visor ArcGIS Swipe */
+    .no-select {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Scrollbar limpio */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0A0F1E;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Inter, system-ui, sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:JetBrains Mono, monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.bottom-0{bottom:0px}.bottom-2\.5{bottom:0.625rem}.bottom-5{bottom:1.25rem}.left-3{left:0.75rem}.right-3{right:0.75rem}.right-5{right:1.25rem}.top-0{top:0px}.top-1\/2{top:50%}.top-3{top:0.75rem}.z-40{z-index:40}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.my-2{margin-top:0.5rem;margin-bottom:0.5rem}.-ml-1\.5{margin-left:-0.375rem}.mb-1{margin-bottom:0.25rem}.mb-1\.5{margin-bottom:0.375rem}.mb-2\.5{margin-bottom:0.625rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mr-1{margin-right:0.25rem}.mt-0\.5{margin-top:0.125rem}.mt-1{margin-top:0.25rem}.mt-4{margin-top:1rem}.mt-1\.5{margin-top:0.375rem}.line-clamp-1{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1}.block{display:block}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-1\.5{height:0.375rem}.h-11{height:2.75rem}.h-2\.5{height:0.625rem}.h-3\.5{height:0.875rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-9{height:2.25rem}.h-\[270px\]{height:270px}.h-auto{height:auto}.h-full{height:100%}.max-h-\[520px\]{max-height:520px}.min-h-screen{min-height:100vh}.w-0\.5{width:0.125rem}.w-11{width:2.75rem}.w-2\.5{width:0.625rem}.w-3\.5{width:0.875rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-9{width:2.25rem}.w-full{width:100%}.min-w-0{min-width:0px}.max-w-\[1600px\]{max-width:1600px}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.-translate-x-1\/2{--tw-translate-x:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.-translate-y-1\/2{--tw-translate-y:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.cursor-ew-resize{cursor:ew-resize}.select-none{-webkit-user-select:none;user-select:none}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-3\.5{gap:0.875rem}.gap-4{gap:1rem}.gap-5{gap:1.25rem}.gap-x-3{column-gap:0.75rem}.gap-y-1{row-gap:0.25rem}.gap-y-2\.5{row-gap:0.625rem}.space-y-2\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.625rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.625rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.self-start{align-self:flex-start}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.rounded-sm{border-radius:0.125rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-amber-900\/60{border-color:rgb(120 53 15 / 0.6)}.border-emerald-400{--tw-border-opacity:1;border-color:rgb(52 211 153 / var(--tw-border-opacity, 1))}.border-emerald-500\/40{border-color:rgb(16 185 129 / 0.4)}.border-purple-500\/40{border-color:rgb(168 85 247 / 0.4)}.border-red-900\/60{border-color:rgb(127 29 29 / 0.6)}.border-sky-400{--tw-border-opacity:1;border-color:rgb(56 189 248 / var(--tw-border-opacity, 1))}.border-sky-400\/40{border-color:rgb(56 189 248 / 0.4)}.border-sky-500\/30{border-color:rgb(14 165 233 / 0.3)}.border-sky-500\/35{border-color:rgb(14 165 233 / 0.35)}.border-sky-500\/40{border-color:rgb(14 165 233 / 0.4)}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-slate-700\/80{border-color:rgb(51 65 85 / 0.8)}.border-slate-700\/90{border-color:rgb(51 65 85 / 0.9)}.border-slate-800{--tw-border-opacity:1;border-color:rgb(30 41 59 / var(--tw-border-opacity, 1))}.border-slate-800\/80{border-color:rgb(30 41 59 / 0.8)}.border-slate-800\/90{border-color:rgb(30 41 59 / 0.9)}.border-transparent{border-color:transparent}.border-amber-500\/35{border-color:rgb(245 158 11 / 0.35)}.border-emerald-300{--tw-border-opacity:1;border-color:rgb(110 231 183 / var(--tw-border-opacity, 1))}.border-emerald-500\/30{border-color:rgb(16 185 129 / 0.3)}.border-emerald-500\/35{border-color:rgb(16 185 129 / 0.35)}.border-emerald-500\/45{border-color:rgb(16 185 129 / 0.45)}.border-purple-500\/30{border-color:rgb(168 85 247 / 0.3)}.border-red-500\/35{border-color:rgb(239 68 68 / 0.35)}.bg-\[\#070C18\]{--tw-bg-opacity:1;background-color:rgb(7 12 24 / var(--tw-bg-opacity, 1))}.bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-amber-950\/60{background-color:rgb(69 26 3 / 0.6)}.bg-emerald-400{--tw-bg-opacity:1;background-color:rgb(52 211 153 / var(--tw-bg-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-emerald-500\/15{background-color:rgb(16 185 129 / 0.15)}.bg-emerald-500\/20{background-color:rgb(16 185 129 / 0.2)}.bg-purple-400{--tw-bg-opacity:1;background-color:rgb(192 132 252 / var(--tw-bg-opacity, 1))}.bg-purple-500\/15{background-color:rgb(168 85 247 / 0.15)}.bg-red-500{--tw-bg-opacity:1;background-color:rgb(239 68 68 / var(--tw-bg-opacity, 1))}.bg-red-950\/60{background-color:rgb(69 10 10 / 0.6)}.bg-sky-400{--tw-bg-opacity:1;background-color:rgb(56 189 248 / var(--tw-bg-opacity, 1))}.bg-sky-500{--tw-bg-opacity:1;background-color:rgb(14 165 233 / var(--tw-bg-opacity, 1))}.bg-sky-500\/15{background-color:rgb(14 165 233 / 0.15)}.bg-sky-500\/20{background-color:rgb(14 165 233 / 0.2)}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-950{--tw-bg-opacity:1;background-color:rgb(2 6 23 / var(--tw-bg-opacity, 1))}.bg-slate-950\/80{background-color:rgb(2 6 23 / 0.8)}.bg-slate-950\/85{background-color:rgb(2 6 23 / 0.85)}.bg-slate-950\/90{background-color:rgb(2 6 23 / 0.9)}.bg-space-900{--tw-bg-opacity:1;background-color:rgb(10 15 30 / var(--tw-bg-opacity, 1))}.bg-space-900\/90{background-color:rgb(10 15 30 / 0.9)}.bg-space-950{--tw-bg-opacity:1;background-color:rgb(5 8 17 / var(--tw-bg-opacity, 1))}.bg-space-950\/70{background-color:rgb(5 8 17 / 0.7)}.bg-space-950\/75{background-color:rgb(5 8 17 / 0.75)}.bg-space-950\/80{background-color:rgb(5 8 17 / 0.8)}.bg-space-950\/90{background-color:rgb(5 8 17 / 0.9)}.bg-amber-500\/15{background-color:rgb(245 158 11 / 0.15)}.bg-emerald-950\/20{background-color:rgb(2 44 34 / 0.2)}.bg-red-500\/15{background-color:rgb(239 68 68 / 0.15)}.bg-slate-800\/90{background-color:rgb(30 41 59 / 0.9)}.bg-gradient-to-br{background-image:linear-gradient(to bottom right, var(--tw-gradient-stops))}.from-sky-500\/20{--tw-gradient-from:rgb(14 165 233 / 0.2) var(--tw-gradient-from-position);--tw-gradient-to:rgb(14 165 233 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.to-emerald-500\/20{--tw-gradient-to:rgb(16 185 129 / 0.2) var(--tw-gradient-to-position)}.p-1{padding:0.25rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-3\.5{padding:0.875rem}.p-4{padding:1rem}.px-1\.5{padding-left:0.375rem;padding-right:0.375rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-3\.5{padding-left:0.875rem;padding-right:0.875rem}.px-4{padding-left:1rem;padding-right:1rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.pr-1{padding-right:0.25rem}.pt-3{padding-top:0.75rem}.text-left{text-align:left}.text-right{text-align:right}.font-mono{font-family:JetBrains Mono, monospace}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.tracking-tight{letter-spacing:-0.025em}.tracking-wide{letter-spacing:0.025em}.tracking-wider{letter-spacing:0.05em}.text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77 / var(--tw-text-opacity, 1))}.text-amber-500\/80{color:rgb(245 158 11 / 0.8)}.text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153 / var(--tw-text-opacity, 1))}.text-purple-300{--tw-text-opacity:1;color:rgb(216 180 254 / var(--tw-text-opacity, 1))}.text-purple-400{--tw-text-opacity:1;color:rgb(192 132 252 / var(--tw-text-opacity, 1))}.text-red-400\/80{color:rgb(248 113 113 / 0.8)}.text-sky-300{--tw-text-opacity:1;color:rgb(125 211 252 / var(--tw-text-opacity, 1))}.text-sky-400{--tw-text-opacity:1;color:rgb(56 189 248 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-red-300{--tw-text-opacity:1;color:rgb(252 165 165 / var(--tw-text-opacity, 1))}.text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249 / var(--tw-text-opacity, 1))}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.shadow-\[0_0_12px_rgba\(56\2c 189\2c 248\2c 0\.95\)\]{--tw-shadow:0 0 12px rgba(56,189,248,0.95);--tw-shadow-colored:0 0 12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sky-950\/50{--tw-shadow-color:rgb(8 47 73 / 0.5);--tw-shadow:var(--tw-shadow-colored)}.shadow-sky-950\/40{--tw-shadow-color:rgb(8 47 73 / 0.4);--tw-shadow:var(--tw-shadow-colored)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.selection\:bg-sky-500\/30 *::selection{background-color:rgb(14 165 233 / 0.3)}.selection\:text-sky-200 *::selection{--tw-text-opacity:1;color:rgb(186 230 253 / var(--tw-text-opacity, 1))}.selection\:bg-sky-500\/30::selection{background-color:rgb(14 165 233 / 0.3)}.selection\:text-sky-200::selection{--tw-text-opacity:1;color:rgb(186 230 253 / var(--tw-text-opacity, 1))}.hover\:border-slate-700:hover{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.hover\:bg-emerald-500\/25:hover{background-color:rgb(16 185 129 / 0.25)}.hover\:bg-sky-500\/25:hover{background-color:rgb(14 165 233 / 0.25)}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-800\/60:hover{background-color:rgb(30 41 59 / 0.6)}.hover\:bg-slate-800\/70:hover{background-color:rgb(30 41 59 / 0.7)}.hover\:bg-space-900:hover{--tw-bg-opacity:1;background-color:rgb(10 15 30 / var(--tw-bg-opacity, 1))}.hover\:text-sky-300:hover{--tw-text-opacity:1;color:rgb(125 211 252 / var(--tw-text-opacity, 1))}.hover\:text-slate-200:hover{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.focus\:border-sky-500:focus{--tw-border-opacity:1;border-color:rgb(14 165 233 / var(--tw-border-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.active\:scale-\[0\.99\]:active{--tw-scale-x:0.99;--tw-scale-y:0.99;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@media (min-width: 640px){.sm\:inline{display:inline}.sm\:h-\[300px\]{height:300px}.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}.sm\:flex-row{flex-direction:row}.sm\:items-center{align-items:center}.sm\:self-auto{align-self:auto}.sm\:p-5{padding:1.25rem}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:text-base{font-size:1rem;line-height:1.5rem}.sm\:text-lg{font-size:1.125rem;line-height:1.75rem}}@media (min-width: 768px){.md\:text-xl{font-size:1.25rem;line-height:1.75rem}}@media (min-width: 1024px){.lg\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}.lg\:flex-row{flex-direction:row}.lg\:items-center{align-items:center}.lg\:justify-between{justify-content:space-between}}@media (min-width: 1280px){.xl\:col-span-5{grid-column:span 5 / span 5}.xl\:col-span-6{grid-column:span 6 / span 6}.xl\:col-span-7{grid-column:span 7 / span 7}.xl\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}}</style></head>
+<body class="orbital-grid-bg min-h-screen flex flex-col antialiased selection:bg-sky-500/30 selection:text-sky-200">
+
+  <!-- NOTIFICACIÓN FLOTANTE (TOAST) PARA ACCIONES SIN ALERT() -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ===================================================================== -->
+  <!-- ENCABEZADO DE CENTRO DE CONTROL Y SELECTOR DE ROL                     -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-40 bg-space-950/90 backdrop-blur-md border-b border-slate-800/90">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      
+      <!-- Identidad de Misión -->
+      <div class="flex items-start sm:items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500/20 to-emerald-500/20 border border-sky-400/40 flex items-center justify-center shrink-0 shadow-lg shadow-sky-950/50">
+          <!-- Icono Orbital SVG -->
+          <svg class="w-6 h-6 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="4"></circle>
+            <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(-28 12 12)"></ellipse>
+            <circle cx="19.2" cy="8.2" r="1.4" fill="#10B981" stroke="none"></circle>
+          </svg>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-base sm:text-lg md:text-xl font-bold tracking-tight text-white">
+              YupizaEduca — <span class="text-sky-400">Semáforo de Riesgo Multidisciplinario</span>
+            </h1>
+            <span class="px-2 py-0.5 text-[11px] font-mono font-semibold uppercase tracking-wider rounded-md bg-sky-500/15 text-sky-300 border border-sky-500/30">
+              Felt + ArcGIS Orbital
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>NASA Space Apps Challenge • Análogos Terrestres Hiperáridos y Volcánicos</span>
+            <span class="hidden sm:inline text-slate-600">|</span>
+            <span id="headerCoords" class="font-mono text-[11px] text-slate-300">SECTOR P-01: 18°11'04"S 69°34'18"W • ALT 3,920m</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Selector de Perfil de Usuario (Rol Operativo) -->
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+        <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 mr-1">Perfil Operativo:</span>
+        <div id="roleSelector" class="inline-flex flex-wrap bg-space-900 p-1 rounded-xl border border-slate-800 gap-1" role="tablist" aria-label="Selector de rol">
+          <button type="button" data-role="agencia" class="role-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 bg-sky-500 text-slate-950 shadow-sm">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+            Agencia Espacial
+          </button>
+          <button type="button" data-role="investigador" class="role-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800/70">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 3h6v4l3 9a2 2 0 0 1-1.9 2.6H7.9A2 2 0 0 1 6 16l3-9V3z"></path><path d="M9 3h6"></path></svg>
+            Investigador de Campo
+          </button>
+          <button type="button" data-role="legislador" class="role-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800/70">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v18"></path><path d="M5 7h14"></path><path d="M5 7l-2 6h4l-2-6z"></path><path d="M19 7l-2 6h4l-2-6z"></path></svg>
+            Legislador / Gobernanza
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- CONTENIDO PRINCIPAL: GRID DE 4 MÓDULOS INTERACTIVOS                   -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 grid grid-cols-1 xl:grid-cols-12 gap-5">
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 1: MAPA DE POLÍGONOS DIAGNÓSTICOS (ESTILO FELT) (7 COLS)     -->
+    <!-- =================================================================== -->
+    <section class="xl:col-span-7 bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xl">
+      <div>
+        <!-- Cabecera del Módulo 1 -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+              <h2 class="text-sm sm:text-base font-bold text-white tracking-tight">
+                Módulo 1: Mapa de Polígonos Diagnósticos (Estilo Felt)
+              </h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Seleccione un polígono análogo para cargar variables NASA, umbrales clínicos y estatus jurídico.
+            </p>
+          </div>
+
+          <!-- Botón de Exportación GeoJSON -->
+          <div class="flex items-center gap-2">
+            <button id="btnDownloadGeoJSON" type="button" class="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition-all flex items-center gap-2 shadow-sm active:scale-[0.99]">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Descargar GeoJSON (Listo para Felt / ArcGIS)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Capas Orbitales del Mapa -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 bg-space-950/70 px-3 py-2 rounded-xl border border-slate-800/80 text-xs">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-slate-400 font-mono text-[11px] mr-1">CAPA BASE:</span>
+            <button type="button" data-maplayer="relieve" class="map-layer-btn px-2.5 py-1 rounded-lg bg-slate-800 text-sky-300 font-medium border border-sky-500/40">
+              Relieve Hiperárido (DEM)
+            </button>
+            <button type="button" data-maplayer="emit" class="map-layer-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 font-medium border border-transparent">
+              Mineralogía Tóxica (EMIT)
+            </button>
+            <button type="button" data-maplayer="uv" class="map-layer-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 font-medium border border-transparent">
+              Irradiancia UV (OMI)
+            </button>
+          </div>
+          <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400">
+            <span class="flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></i>Óptimo</span>
+            <span class="flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block"></i>Precaución</span>
+            <span class="flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block"></i>Crítico</span>
+          </div>
+        </div>
+
+        <!-- Lienzo Cartográfico Interactivo SVG (Estilo Felt) -->
+        <div class="relative w-full rounded-xl overflow-hidden border border-slate-700/80 bg-[#070C18] shadow-inner">
+          <svg id="feltMapSvg" viewBox="0 0 800 450" class="w-full h-auto block select-none" aria-label="Mapa interactivo de polígonos diagnósticos">
+            <defs>
+              <!-- Gradiente topográfico hiperárido/volcánico -->
+              <radialgradient id="terrainBase" cx="50%" cy="45%" r="65%">
+                <stop offset="0%" stop-color="#1A2234"></stop>
+                <stop offset="55%" stop-color="#101726"></stop>
+                <stop offset="100%" stop-color="#080D19"></stop>
+              </radialgradient>
+
+              <!-- Capa térmica EMIT (Toxicidad mineral) -->
+              <radialgradient id="emitHeatmap" cx="68%" cy="62%" r="35%">
+                <stop offset="0%" stop-color="#EF4444" stop-opacity="0.42"></stop>
+                <stop offset="55%" stop-color="#F59E0B" stop-opacity="0.18"></stop>
+                <stop offset="100%" stop-color="#080D19" stop-opacity="0"></stop>
+              </radialgradient>
+
+              <!-- Capa atmosférica OMI (Radiación UV altitudinal) -->
+              <lineargradient id="uvHeatmap" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.12"></stop>
+                <stop offset="50%" stop-color="#A855F7" stop-opacity="0.28"></stop>
+                <stop offset="100%" stop-color="#EC4899" stop-opacity="0.35"></stop>
+              </lineargradient>
+
+              <!-- Patrón de cuadrícula cartográfica -->
+              <pattern id="cartoGrid" width="80" height="80" patternUnits="userSpaceOnUse">
+                <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#1E293B" stroke-width="0.7" stroke-dasharray="3 3"></path>
+              </pattern>
+
+              <!-- Filtro glow para polígono seleccionado -->
+              <filter id="selectedPolyGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <fegaussianblur stdDeviation="4" result="blur"></fegaussianblur>
+                <fecomposite in="SourceGraphic" in2="blur" operator="over"></fecomposite>
+              </filter>
+            </defs>
+
+            <!-- Fondo del terreno -->
+            <rect width="800" height="450" fill="url(#terrainBase)"></rect>
+            <rect width="800" height="450" fill="url(#cartoGrid)"></rect>
+
+            <!-- Curvas de nivel topográficas (Caldera volcánica, meseta y cuenca) -->
+            <g fill="none" stroke="#26334D" stroke-width="1">
+              <!-- Meseta Norte -->
+              <path d="M 45,55 Q 190,30 330,75 T 390,175 Q 250,205 110,185 T 45,55 Z"></path>
+              <path d="M 75,75 Q 190,55 300,90 T 345,155 Q 240,180 130,165 T 75,75 Z" stroke-opacity="0.65"></path>
+              <!-- Macizo Volcánico Este -->
+              <path d="M 450,35 Q 610,20 745,80 T 765,220 Q 620,245 485,190 T 450,35 Z"></path>
+              <path d="M 505,65 Q 615,50 705,95 T 715,185 Q 610,205 520,165 T 505,65 Z" stroke-opacity="0.7"></path>
+              <circle cx="615" cy="122" r="24" stroke="#3B4D70" stroke-dasharray="4 2"></circle>
+              <!-- Cuenca de Relaves Mineros -->
+              <path d="M 420,255 Q 575,235 725,280 T 740,405 Q 565,425 435,380 T 420,255 Z"></path>
+              <!-- Corredor Geotérmico Sur -->
+              <path d="M 60,240 Q 210,220 355,270 T 370,405 Q 215,430 85,385 T 60,240 Z"></path>
+            </g>
+
+            <!-- Drenajes secos / quebradas hiperáridas -->
+            <g fill="none" stroke="#1E3A5F" stroke-width="1.3" stroke-opacity="0.55">
+              <path d="M 320,165 C 365,205 395,235 450,275"></path>
+              <path d="M 555,175 C 535,215 520,240 505,285"></path>
+              <path d="M 240,185 C 225,235 215,275 200,320"></path>
+            </g>
+
+            <!-- Capas espectrales dinámicas (EMIT / UV) -->
+            <rect id="layerEmitOverlay" width="800" height="450" fill="url(#emitHeatmap)" class="hidden transition-opacity duration-300"></rect>
+            <rect id="layerUvOverlay" width="800" height="450" fill="url(#uvHeatmap)" class="hidden transition-opacity duration-300"></rect>
+
+            <!-- GRUPO DE POLÍGONOS DIAGNÓSTICOS (Renderizados dinámicamente vía JS) -->
+            <g id="polygonsGroup"><g class="felt-polygon" role="button" tabindex="0" aria-label="P-01: Meseta Hiperárida Norte - Estado ÓPTIMO"><polygon points="85,68 310,60 355,155 120,175" fill="#10B981" fill-opacity="0.38" stroke="#10B981" stroke-width="3.2" stroke-linejoin="round" filter="url(#selectedPolyGlow)"></polygon><circle cx="85" cy="68" r="4" fill="#0F172A" stroke="#10B981" stroke-width="2"></circle><circle cx="310" cy="60" r="4" fill="#0F172A" stroke="#10B981" stroke-width="2"></circle><circle cx="355" cy="155" r="4" fill="#0F172A" stroke="#10B981" stroke-width="2"></circle><circle cx="120" cy="175" r="4" fill="#0F172A" stroke="#10B981" stroke-width="2"></circle><rect x="141" y="96" width="148" height="44" rx="8" fill="#0F172A" fill-opacity="0.92" stroke="#38BDF8" stroke-width="1.8"></rect><text x="215" y="113" text-anchor="middle" fill="#F8FAFC" font-size="11" font-weight="700" font-family="Inter, sans-serif">P-01: Meseta Norte</text><text x="215" y="129" text-anchor="middle" fill="#10B981" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">14.8 km² • ÓPTIMO</text></g><g class="felt-polygon" role="button" tabindex="0" aria-label="P-02: Ladera Volcánica Alta - Estado PRECAUCIÓN"><polygon points="475,55 725,75 740,195 495,180" fill="#F59E0B" fill-opacity="0.22" stroke="#F59E0B" stroke-width="2" stroke-linejoin="round"></polygon><circle cx="475" cy="55" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><circle cx="725" cy="75" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><circle cx="740" cy="195" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><circle cx="495" cy="180" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><rect x="536" y="103" width="148" height="44" rx="8" fill="#090E1A" fill-opacity="0.92" stroke="#F59E0B" stroke-width="1.2"></rect><text x="610" y="120" text-anchor="middle" fill="#F8FAFC" font-size="11" font-weight="700" font-family="Inter, sans-serif">P-02: Ladera Volcánica</text><text x="610" y="136" text-anchor="middle" fill="#F59E0B" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">22.4 km² • PRECAUCIÓN</text></g><g class="felt-polygon" role="button" tabindex="0" aria-label="P-03: Cuenca con Relaves Mineros Tóxicos - Estado CRÍTICO"><polygon points="445,260 715,275 705,390 455,375" fill="#EF4444" fill-opacity="0.22" stroke="#EF4444" stroke-width="2" stroke-linejoin="round"></polygon><circle cx="445" cy="260" r="2.8" fill="#0F172A" stroke="#EF4444" stroke-width="2"></circle><circle cx="715" cy="275" r="2.8" fill="#0F172A" stroke="#EF4444" stroke-width="2"></circle><circle cx="705" cy="390" r="2.8" fill="#0F172A" stroke="#EF4444" stroke-width="2"></circle><circle cx="455" cy="375" r="2.8" fill="#0F172A" stroke="#EF4444" stroke-width="2"></circle><rect x="506" y="303" width="148" height="44" rx="8" fill="#090E1A" fill-opacity="0.92" stroke="#EF4444" stroke-width="1.2"></rect><text x="580" y="320" text-anchor="middle" fill="#F8FAFC" font-size="11" font-weight="700" font-family="Inter, sans-serif">P-03: Cuenca Relaves</text><text x="580" y="336" text-anchor="middle" fill="#EF4444" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">9.6 km² • CRÍTICO</text></g><g class="felt-polygon" role="button" tabindex="0" aria-label="P-04: Corredor Geotérmico Sur - Estado PRECAUCIÓN"><polygon points="80,250 345,265 335,388 95,372" fill="#F59E0B" fill-opacity="0.22" stroke="#F59E0B" stroke-width="2" stroke-linejoin="round"></polygon><circle cx="80" cy="250" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><circle cx="345" cy="265" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><circle cx="335" cy="388" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><circle cx="95" cy="372" r="2.8" fill="#0F172A" stroke="#F59E0B" stroke-width="2"></circle><rect x="141" y="296" width="148" height="44" rx="8" fill="#090E1A" fill-opacity="0.92" stroke="#F59E0B" stroke-width="1.2"></rect><text x="215" y="313" text-anchor="middle" fill="#F8FAFC" font-size="11" font-weight="700" font-family="Inter, sans-serif">P-04: Corredor Sur</text><text x="215" y="329" text-anchor="middle" fill="#F59E0B" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">11.2 km² • PRECAUCIÓN</text></g></g>
+
+            <!-- Elementos Cartográficos Estilo Felt (Rosa de los Vientos y Escala) -->
+            <g transform="translate(745, 45)">
+              <circle cx="0" cy="0" r="18" fill="#0A0F1E" fill-opacity="0.85" stroke="#334155" stroke-width="1"></circle>
+              <polygon points="0,-13 3.5,0 0,-3 -3.5,0" fill="#38BDF8"></polygon>
+              <polygon points="0,13 3.5,0 0,3 -3.5,0" fill="#64748B"></polygon>
+              <text x="0" y="-21" text-anchor="middle" fill="#94A3B8" font-size="9" font-family="JetBrains Mono" font-weight="bold">N</text>
+            </g>
+
+            <!-- Barra de Escala -->
+            <g transform="translate(24, 422)">
+              <rect x="-6" y="-14" width="136" height="24" rx="6" fill="#0A0F1E" fill-opacity="0.85" stroke="#1E293B"></rect>
+              <line x1="4" y1="2" x2="64" y2="2" stroke="#94A3B8" stroke-width="2"></line>
+              <line x1="4" y1="-2" x2="4" y2="5" stroke="#94A3B8" stroke-width="1.5"></line>
+              <line x1="64" y1="-2" x2="64" y2="5" stroke="#94A3B8" stroke-width="1.5"></line>
+              <text x="72" y="5" fill="#CBD5E1" font-size="10" font-family="JetBrains Mono">5 km</text>
+            </g>
+
+            <!-- Etiqueta de Sensor Activo -->
+            <g transform="translate(555, 422)">
+              <rect x="0" y="-14" width="225" height="24" rx="6" fill="#0A0F1E" fill-opacity="0.85" stroke="#1E293B"></rect>
+              <text id="mapSensorTag" x="112" y="2" text-anchor="middle" fill="#7DD3FC" font-size="10" font-family="JetBrains Mono">
+                FELT-SYNC • NASA EMIT / OMI / DEM
+              </text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Tarjetas Rápidas de Selección de los 4 Polígonos -->
+      <div id="polygonCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-4"><button type="button" class="text-left p-2.5 rounded-xl border transition-all flex flex-col justify-between bg-slate-800/90 border-sky-400 shadow-md shadow-sky-950/40">
+            <div class="flex items-center justify-between gap-1 w-full mb-1">
+              <span class="font-mono text-xs font-bold text-white">P-01</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border bg-emerald-500/15 text-emerald-300 border-emerald-500/35">
+                ÓPTIMO
+              </span>
+            </div>
+            <div class="text-xs font-semibold text-slate-200 leading-snug line-clamp-1">Meseta Hiperárida Norte</div>
+            <div class="flex items-center justify-between w-full mt-1.5 text-[10px] font-mono text-slate-400">
+              <span>14.8 km²</span>
+              <span>Índice: 82/100</span>
+            </div>
+          </button><button type="button" class="text-left p-2.5 rounded-xl border transition-all flex flex-col justify-between bg-space-950/70 border-slate-800 hover:border-slate-700 hover:bg-space-900">
+            <div class="flex items-center justify-between gap-1 w-full mb-1">
+              <span class="font-mono text-xs font-bold text-white">P-02</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border bg-amber-500/15 text-amber-300 border-amber-500/35">
+                PRECAUCIÓN
+              </span>
+            </div>
+            <div class="text-xs font-semibold text-slate-200 leading-snug line-clamp-1">Ladera Volcánica Alta</div>
+            <div class="flex items-center justify-between w-full mt-1.5 text-[10px] font-mono text-slate-400">
+              <span>22.4 km²</span>
+              <span>Índice: 55/100</span>
+            </div>
+          </button><button type="button" class="text-left p-2.5 rounded-xl border transition-all flex flex-col justify-between bg-space-950/70 border-slate-800 hover:border-slate-700 hover:bg-space-900">
+            <div class="flex items-center justify-between gap-1 w-full mb-1">
+              <span class="font-mono text-xs font-bold text-white">P-03</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border bg-red-500/15 text-red-300 border-red-500/35">
+                CRÍTICO
+              </span>
+            </div>
+            <div class="text-xs font-semibold text-slate-200 leading-snug line-clamp-1">Cuenca con Relaves Mineros Tóxicos</div>
+            <div class="flex items-center justify-between w-full mt-1.5 text-[10px] font-mono text-slate-400">
+              <span>9.6 km²</span>
+              <span>Índice: 19/100</span>
+            </div>
+          </button><button type="button" class="text-left p-2.5 rounded-xl border transition-all flex flex-col justify-between bg-space-950/70 border-slate-800 hover:border-slate-700 hover:bg-space-900">
+            <div class="flex items-center justify-between gap-1 w-full mb-1">
+              <span class="font-mono text-xs font-bold text-white">P-04</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border bg-amber-500/15 text-amber-300 border-amber-500/35">
+                PRECAUCIÓN
+              </span>
+            </div>
+            <div class="text-xs font-semibold text-slate-200 leading-snug line-clamp-1">Corredor Geotérmico Sur</div>
+            <div class="flex items-center justify-between w-full mt-1.5 text-[10px] font-mono text-slate-400">
+              <span>11.2 km²</span>
+              <span>Índice: 57/100</span>
+            </div>
+          </button></div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 2: SIMULADOR DEL SEMÁFORO DE RIESGO MULTIDISCIPLINARIO       -->
+    <!-- =================================================================== -->
+    <section class="xl:col-span-5 bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xl">
+      <div>
+        <!-- Cabecera Módulo 2 -->
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              <h2 class="text-sm sm:text-base font-bold text-white tracking-tight">
+                Módulo 2: Simulador del Semáforo (3 Ejes)
+              </h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Polígono activo: <strong id="simPolyTitle" class="text-sky-300">P-01: Meseta Hiperárida Norte</strong>
+            </p>
+          </div>
+          <button id="btnResetSim" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium border border-slate-700 transition-colors">
+            Restablecer Orbital
+          </button>
+        </div>
+
+        <!-- PANEL VISUAL DEL SEMÁFORO Y LÓGICA DE VETO CRÍTICO -->
+        <div id="trafficLightBox" class="rounded-xl p-3.5 mb-4 border transition-all duration-300 bg-emerald-950/20 border-emerald-500/45">
+          <div class="flex items-center gap-4">
+            <!-- Carcasa física del semáforo de 3 luces -->
+            <div class="bg-slate-950 px-2.5 py-2 rounded-2xl border border-slate-800 flex flex-col gap-2 shrink-0 shadow-inner">
+              <div id="lampRed" class="w-5 h-5 rounded-full bg-red-950/60 border border-red-900/60 transition-all"></div>
+              <div id="lampYellow" class="w-5 h-5 rounded-full bg-amber-950/60 border border-amber-900/60 transition-all"></div>
+              <div id="lampGreen" class="w-5 h-5 rounded-full lamp-active-green border border-emerald-300 transition-all"></div>
+            </div>
+
+            <!-- Estado Global y Puntaje Compuesto -->
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span id="statusBadge" class="px-2.5 py-0.5 rounded-md text-xs font-extrabold tracking-wide uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">VERDE — DESPLIEGUE AUTORIZADO</span>
+                <div class="text-right">
+                  <span class="text-[10px] font-mono uppercase text-slate-400 block">Índice Seguridad</span>
+                  <span id="compositeScoreVal" class="text-lg font-mono font-bold text-emerald-400">82 / 100</span>
+                </div>
+              </div>
+
+              <!-- Barra de progreso del puntaje compuesto -->
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden my-2">
+                <div id="compositeScoreBar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 82%;"></div>
+              </div>
+
+              <!-- Justificación Técnica / Alerta de Veto Crítico -->
+              <p id="vetoJustification" class="text-xs text-slate-300 leading-relaxed">Todos los parámetros orbitales NASA, biomarcadores salivales y criterios COSPAR/Artemisa se encuentran dentro de rangos nominales.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTROLES DE LOS 3 EJES DE SIMULACIÓN -->
+        <div class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+          
+          <!-- EJE 1: DATOS ORBITALES NASA -->
+          <div class="bg-space-950/75 border border-slate-800/90 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2.5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-sky-500/15 text-[10px] font-mono">EJE 1</span>
+                Datos Orbitales NASA
+              </h3>
+              <span class="text-[10px] font-mono text-slate-400">EMIT • OMI • MERRA-2</span>
+            </div>
+
+            <div class="space-y-2.5">
+              <!-- Metales pesados -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderMetals" class="text-slate-300">Metales Pesados / Minería Tóxica <span class="text-slate-500">(EMIT)</span></label>
+                  <span id="valMetals" class="font-mono font-semibold text-sky-300">18 ppm</span>
+                </div>
+                <input id="sliderMetals" type="range" min="0" max="400" step="2" value="18" class="telemetry-slider">
+                <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
+                  <span>0 ppm</span>
+                  <span class="text-amber-500/80">Precaución &gt;55</span>
+                  <span class="text-red-400/80">Veto &gt;180</span>
+                </div>
+              </div>
+
+              <!-- Radiación UV -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderUv" class="text-slate-300">Índice Radiación Ultravioleta <span class="text-slate-500">(OMI)</span></label>
+                  <span id="valUv" class="font-mono font-semibold text-sky-300">7.2 UV</span>
+                </div>
+                <input id="sliderUv" type="range" min="1" max="16" step="0.1" value="7.2" class="telemetry-slider">
+                <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
+                  <span>1.0 Bajo</span>
+                  <span class="text-amber-500/80">Precaución &gt;9.5</span>
+                  <span class="text-red-400/80">Veto &gt;13.5</span>
+                </div>
+              </div>
+
+              <!-- Presión Atmosférica -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderPressure" class="text-slate-300">Presión Atmosférica <span class="text-slate-500">(MERRA-2)</span></label>
+                  <span id="valPressure" class="font-mono font-semibold text-sky-300">760 hPa</span>
+                </div>
+                <input id="sliderPressure" type="range" min="350" max="1013" step="5" value="760" class="telemetry-slider">
+                <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
+                  <span class="text-red-400/80">Veto &lt;480 hPa</span>
+                  <span class="text-amber-500/80">Hipoxia &lt;650</span>
+                  <span>1013 hPa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EJE 2: UMBRALES CLÍNICOS Y BIOMARCADORES SALIVALES -->
+          <div class="bg-space-950/75 border border-slate-800/90 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2.5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-[10px] font-mono">EJE 2</span>
+                Clínica y Biomarcadores Salivales
+              </h3>
+              <span class="text-[10px] font-mono text-slate-400">NO INVASIVO</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+              <!-- Riesgo Cardiopulmonar -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderCardio" class="text-slate-300">Riesgo Cardiopulmonar</label>
+                  <span id="valCardio" class="font-mono font-semibold text-emerald-300">18%</span>
+                </div>
+                <input id="sliderCardio" type="range" min="0" max="100" step="1" value="18" class="telemetry-slider">
+              </div>
+
+              <!-- Riesgo Ocular -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderOcular" class="text-slate-300">Riesgo Ocular (UV)</label>
+                  <span id="valOcular" class="font-mono font-semibold text-emerald-300">22%</span>
+                </div>
+                <input id="sliderOcular" type="range" min="0" max="100" step="1" value="22" class="telemetry-slider">
+              </div>
+
+              <!-- Cortisol Salival -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderCortisol" class="text-slate-300">Cortisol Salival</label>
+                  <span id="valCortisol" class="font-mono font-semibold text-emerald-300">9.5 nmol/L</span>
+                </div>
+                <input id="sliderCortisol" type="range" min="4" max="35" step="0.5" value="9.5" class="telemetry-slider">
+                <span class="block text-[10px] font-mono text-slate-500 mt-0.5">Crítico &gt;24.0 nmol/L</span>
+              </div>
+
+              <!-- Inmunoglobulina A secretora (sIgA) -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="sliderSiga" class="text-slate-300">sIgA Salival</label>
+                  <span id="valSiga" class="font-mono font-semibold text-emerald-300">145 µg/mL</span>
+                </div>
+                <input id="sliderSiga" type="range" min="30" max="200" step="2" value="145" class="telemetry-slider">
+                <span class="block text-[10px] font-mono text-slate-500 mt-0.5">Crítico &lt;65 µg/mL</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- EJE 3: DERECHO DE PROTECCIÓN PLANETARIA -->
+          <div class="bg-space-950/75 border border-slate-800/90 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2.5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-purple-500/15 text-[10px] font-mono">EJE 3</span>
+                Derecho de Protección Planetaria
+              </h3>
+              <span class="text-[10px] font-mono text-slate-400">COSPAR • ARTEMISA</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label for="selectCospar" class="block text-[11px] text-slate-400 mb-1">Categoría COSPAR (Biocontaminación)</label>
+                <select id="selectCospar" class="w-full bg-space-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
+                  <option value="I">Cat. I — Sin interés biológico directo</option>
+                  <option value="II">Cat. II — Interés remoto (Análogo Lunar)</option>
+                  <option value="III">Cat. III — Sobrevuelo / Órbita restringida</option>
+                  <option value="IVa">Cat. IVa — Región Especial / Biofirmas</option>
+                  <option value="IVb">Cat. IVb — Riesgo Contaminación Crítica</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="selectArtemis" class="block text-[11px] text-slate-400 mb-1">Acuerdos Artemisa (Sec. 9 y 11)</label>
+                <select id="selectArtemis" class="w-full bg-space-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
+                  <option value="compliant">Cumple Sec. 9 (Patrimonio) y Sec. 11</option>
+                  <option value="review">Revisión Zona de Seguridad (Sec. 11)</option>
+                  <option value="non_compliant">Incumplimiento Ambiental / Conflicto (Sec. 9)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 3: COMPARADOR ORBITAL TIERRA VS LUNA/MARTE (ARCGIS SWIPE)    -->
+    <!-- =================================================================== -->
+    <section class="xl:col-span-6 bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xl">
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+              <h2 class="text-sm sm:text-base font-bold text-white tracking-tight">
+                Módulo 3: Comparador Orbital (Estilo ArcGIS Swipe)
+              </h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Deslice la barra vertical para contrastar el sitio terrestre con su objetivo extraterrestre.
+            </p>
+          </div>
+
+          <!-- Selector de Destino Planetario -->
+          <div class="inline-flex bg-space-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button type="button" data-target="luna" class="target-btn px-2.5 py-1 rounded-lg bg-slate-800 text-sky-300 font-semibold border border-sky-500/30">
+              Luna: Cráter Shackleton (LRO)
+            </button>
+            <button type="button" data-target="marte" class="target-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-semibold">
+              Marte: Cráter Jezero (MRO)
+            </button>
+          </div>
+        </div>
+
+        <!-- CONTENEDOR INTERACTIVO ARCGIS SWIPE -->
+        <div id="swipeContainer" class="relative w-full h-[270px] sm:h-[300px] rounded-xl overflow-hidden border border-slate-700/90 bg-space-950 no-select cursor-ew-resize">
+          
+          <!-- CAPA DERECHA (FONDO COMPLETO): OBJETIVO PLANETARIO (LUNA LRO / MARTE MRO) -->
+          <div id="planetaryLayer" class="absolute inset-0 w-full h-full">
+            <!-- SVG Planetario renderizado dinámicamente -->
+            <svg id="planetarySvg" viewBox="0 0 700 320" preserveAspectRatio="xMidYMid slice" class="w-full h-full block">
+            <defs>
+              <radialgradient id="lunarSurface" cx="55%" cy="50%" r="60%">
+                <stop offset="0%" stop-color="#090D16"></stop>
+                <stop offset="48%" stop-color="#334155"></stop>
+                <stop offset="72%" stop-color="#64748B"></stop>
+                <stop offset="100%" stop-color="#1E293B"></stop>
+              </radialgradient>
+            </defs>
+            <rect width="700" height="320" fill="url(#lunarSurface)"></rect>
+            <!-- Cráteres secundarios de impacto -->
+            <circle cx="140" cy="85" r="28" fill="#1E293B" stroke="#94A3B8" stroke-width="1.2" opacity="0.6"></circle>
+            <circle cx="585" cy="245" r="36" fill="#0F172A" stroke="#94A3B8" stroke-width="1.4" opacity="0.65"></circle>
+            <circle cx="520" cy="75" r="19" fill="#1E293B" stroke="#CBD5E1" stroke-width="1" opacity="0.5"></circle>
+            <!-- Borde principal del Cráter Shackleton y Zona de Sombra Permanente (PSR) -->
+            <circle cx="385" cy="165" r="108" fill="#050811" stroke="#CBD5E1" stroke-width="2.5" stroke-opacity="0.75"></circle>
+            <circle cx="385" cy="165" r="122" fill="none" stroke="#94A3B8" stroke-width="1" stroke-dasharray="5 4"></circle>
+            <!-- Elipse de aterrizaje Artemisa en cresta iluminada -->
+            <ellipse cx="485" cy="135" rx="34" ry="18" transform="rotate(-22 485 135)" fill="#A855F7" fill-opacity="0.25" stroke="#C084FC" stroke-width="1.8"></ellipse>
+            <text x="385" y="168" text-anchor="middle" fill="#94A3B8" font-family="JetBrains Mono" font-size="10">
+              PSR • HIELO DE AGUA (-230°C)
+            </text>
+          </svg>
+            <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-slate-950/85 border border-purple-500/40 backdrop-blur-sm text-right">
+              <span id="rightLabelSensor" class="block text-[10px] font-mono text-purple-300 uppercase">NASA LRO • LOLA DEM (POLO SUR)</span>
+              <span id="rightLabelTitle" class="text-xs font-bold text-white">Luna — Cráter Shackleton (89.9°S)</span>
+            </div>
+          </div>
+
+          <!-- CAPA IZQUIERDA (RECORTADA POR CLIP-PATH): VISTA ORBITAL TERRESTRE (NASA EARTHDATA) -->
+          <div id="earthLayer" class="absolute inset-0 w-full h-full" style="clip-path: inset(0 50% 0 0);">
+            <svg id="earthOrbitalSvg" viewBox="0 0 700 320" preserveAspectRatio="xMidYMid slice" class="w-full h-full block">
+          <defs>
+            <lineargradient id="earthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1E293B"></stop>
+              <stop offset="50%" stop-color="#292524"></stop>
+              <stop offset="100%" stop-color="#172033"></stop>
+            </lineargradient>
+            <radialgradient id="mineralPlume" cx="48%" cy="52%" r="42%">
+              <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.45"></stop>
+              <stop offset="100%" stop-color="#38BDF8" stop-opacity="0"></stop>
+            </radialgradient>
+          </defs>
+          <rect width="700" height="320" fill="url(#earthGrad)"></rect>
+          <!-- Abanicos aluviales y crestas volcánicas -->
+          <path d="M -20,260 Q 180,140 340,190 T 720,120 L 720,320 L -20,320 Z" fill="#1C1917" opacity="0.7"></path>
+          <path d="M 60,40 Q 240,95 410,55 T 690,110" fill="none" stroke="#57534E" stroke-width="2" opacity="0.55"></path>
+          <path d="M 90,125 Q 275,175 460,135 T 680,195" fill="none" stroke="#78716C" stroke-width="1.5" opacity="0.45"></path>
+          <ellipse cx="340" cy="170" rx="220" ry="110" fill="url(#mineralPlume)"></ellipse>
+          <!-- Retícula de telemetría orbital -->
+          <g stroke="#38BDF8" stroke-opacity="0.25" stroke-width="1">
+            <line x1="0" y1="80" x2="700" y2="80" stroke-dasharray="4 4"></line>
+            <line x1="0" y1="240" x2="700" y2="240" stroke-dasharray="4 4"></line>
+            <line x1="175" y1="0" x2="175" y2="320" stroke-dasharray="4 4"></line>
+            <line x1="525" y1="0" x2="525" y2="320" stroke-dasharray="4 4"></line>
+          </g>
+          <!-- Polígono proyectado en órbita -->
+          <polygon points="210,110 380,95 415,210 230,225" fill="#38BDF8" fill-opacity="0.22" stroke="#38BDF8" stroke-width="2" stroke-dasharray="6 3"></polygon>
+          <text x="312" y="165" text-anchor="middle" fill="#F8FAFC" font-family="JetBrains Mono" font-size="11" font-weight="bold">
+            ANÁLOGO P-01 (18 ppm)
+          </text>
+        </svg>
+            <div class="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-slate-950/85 border border-sky-500/40 backdrop-blur-sm">
+              <span class="block text-[10px] font-mono text-sky-300 uppercase">NASA EARTHDATA • LANDSAT / EMIT</span>
+              <span id="leftLabelTitle" class="text-xs font-bold text-white">P-01: Meseta Hiperárida Norte</span>
+            </div>
+          </div>
+
+          <!-- DIVISOR DESLIZANTE VERTICAL (SWIPE HANDLE) -->
+          <div id="swipeDivider" class="absolute top-0 bottom-0 w-0.5 bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.95)] pointer-events-none" style="left: 50%;">
+            <div class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-950 border-2 border-sky-400 shadow-lg flex items-center justify-center text-sky-300">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <svg class="w-4 h-4 -ml-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Controles rápidos de porcentaje en esquina inferior -->
+          <div class="absolute bottom-2.5 left-3 right-3 flex items-center justify-between pointer-events-none">
+            <span class="px-2 py-0.5 rounded bg-slate-950/80 text-[10px] font-mono text-slate-300 border border-slate-800">
+              TIERRA (ANÁLOGO)
+            </span>
+            <div class="pointer-events-auto flex items-center gap-1 bg-slate-950/90 px-2 py-1 rounded-lg border border-slate-800">
+              <button type="button" data-swipe="20" class="swipe-preset px-1.5 py-0.5 text-[10px] font-mono text-slate-400 hover:text-sky-300">20%</button>
+              <button type="button" data-swipe="50" class="swipe-preset px-1.5 py-0.5 text-[10px] font-mono text-sky-300 font-bold">50%</button>
+              <button type="button" data-swipe="80" class="swipe-preset px-1.5 py-0.5 text-[10px] font-mono text-slate-400 hover:text-sky-300">80%</button>
+            </div>
+            <span id="bottomRightBodyTag" class="px-2 py-0.5 rounded bg-slate-950/80 text-[10px] font-mono text-purple-300 border border-slate-800">LUNA (LRO)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MÉTRICAS DE SIMILITUD GEOMORFOLÓGICA Y EXTRAPOLACIÓN FISIOLÓGICA -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+        <div class="bg-space-950/80 border border-slate-800 rounded-xl p-2.5">
+          <span class="text-[10px] font-mono uppercase text-slate-400 block">Similitud Geomorfológica</span>
+          <span id="metricSimilarity" class="text-base font-mono font-bold text-sky-400 mt-0.5 block">92.6%</span>
+          <span id="metricSimilaritySub" class="text-[10px] text-slate-500">Regolito anhidro de tierras altas</span>
+        </div>
+        <div class="bg-space-950/80 border border-slate-800 rounded-xl p-2.5">
+          <span class="text-[10px] font-mono uppercase text-slate-400 block">Pendiente Media</span>
+          <span id="metricSlope" class="text-base font-mono font-bold text-slate-200 mt-0.5 block">11.4°</span>
+          <span id="metricSlopeSub" class="text-[10px] text-slate-500">Óptimo para aterrizador y EVA</span>
+        </div>
+        <div class="bg-space-950/80 border border-slate-800 rounded-xl p-2.5">
+          <span class="text-[10px] font-mono uppercase text-slate-400 block">Albedo / Mineralogía</span>
+          <span id="metricAlbedo" class="text-base font-mono font-bold text-amber-300 mt-0.5 block">0.15 • Anortosita</span>
+          <span id="metricAlbedoSub" class="text-[10px] text-slate-500">Baja dispersión térmica</span>
+        </div>
+        <div class="bg-space-950/80 border border-slate-800 rounded-xl p-2.5">
+          <span class="text-[10px] font-mono uppercase text-slate-400 block">Estrés Tripulación EVA</span>
+          <span id="metricStress" class="text-base font-mono font-bold text-emerald-400 mt-0.5 block">+14% Carga</span>
+          <span id="metricStressSub" class="text-[10px] text-slate-500">Demanda metabólica nominal</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 4: PANEL DE DICTAMEN PREVENTIVO POR ROL                      -->
+    <!-- =================================================================== -->
+    <section class="xl:col-span-6 bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-xl">
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <h2 class="text-sm sm:text-base font-bold text-white tracking-tight">
+                Dictamen Preventivo Antes del Despegue
+              </h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Protocolo operativo generado según rol seleccionado y estado del semáforo.
+            </p>
+          </div>
+
+          <button id="btnCopyBrief" type="button" class="px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 text-xs font-semibold transition-all flex items-center gap-1.5 self-start sm:self-auto">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>Copiar Dictamen</span>
+          </button>
+        </div>
+
+        <!-- Cabecera contextual del rol activo -->
+        <div id="dictamenHeaderCard" class="rounded-xl p-3.5 bg-space-950/90 border border-slate-800 mb-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+            <span id="dictamenRoleBadge" class="px-2.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/40 text-xs font-bold">PERFIL: AGENCIA ESPACIAL (ARQUITECTURA DE MISIÓN)</span>
+            <span id="dictamenCode" class="font-mono text-[11px] text-slate-400">DICTAMEN #YPZ-P-01-VERDE</span>
+          </div>
+          <h3 id="dictamenHeadline" class="text-sm font-bold text-white">Luz Verde Operativa: Meseta Hiperárida Norte apto para simulación análoga tripulada</h3>
+          <p id="dictamenSummary" class="text-xs text-slate-300 mt-1 leading-relaxed">Con un índice de seguridad de 82/100, el polígono P-01 ofrece condiciones óptimas para validar trajes EVA, rovers y protocolos de superficie previos a misiones Artemisa (Luna).</p>
+        </div>
+
+        <!-- Lista de Acciones Preventivas Estructuradas (3 Pilares) -->
+        <div id="dictamenActionsList" class="space-y-2.5">
+            <div class="p-3 rounded-xl bg-space-950/75 border border-slate-800/90">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-xs font-bold text-slate-100">Ventana EVA Autorizada</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border bg-sky-500/15 text-sky-300 border-sky-500/30">OPERACIONES</span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">Se autorizan incursiones extravehiculares de hasta 6.5 horas continuas con presión barométrica de 760 hPa y radiación UV de 7.2.</p>
+            </div>
+          
+            <div class="p-3 rounded-xl bg-space-950/75 border border-slate-800/90">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-xs font-bold text-slate-100">Fidelidad de Entrenamiento</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border bg-emerald-500/15 text-emerald-300 border-emerald-500/30">INGENIERÍA</span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">Similitud geomorfológica del 92.6% permite calibrar sensores LiDAR y ruedas de rovers sin riesgo de abrasión tóxica (18 ppm).</p>
+            </div>
+          
+            <div class="p-3 rounded-xl bg-space-950/75 border border-slate-800/90">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-xs font-bold text-slate-100">Certificación Pre-Despegue</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border bg-purple-500/15 text-purple-300 border-purple-500/30">CUMPLIMIENTO</span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">Conformidad plena con COSPAR Cat. II y Acuerdos Artemisa; el sitio puede incorporarse al catálogo oficial de análogos.</p>
+            </div>
+          </div>
+      </div>
+
+      <!-- Pie de Trazabilidad Científica y Legal -->
+      <div class="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
+        <span>MARCO: COSPAR PP Policy + Acuerdos Artemisa</span>
+        <span id="dictamenTimestamp" class="text-slate-500">ACTUALIZADO: 02:46:00 p. m.</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- LÓGICA DE APLICACIÓN, MODELO DE DATOS Y MOTOR DE EVALUACIÓN           -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /**
+       * Base de datos geoespacial, clínica y jurídica de los 4 polígonos diagnósticos
+       * inspirados en entornos hiperáridos y volcánicos altoandinos (análogos de Luna y Marte).
+       */
+      const POLYGONS_DATA = {
+        'P-01': {
+          id: 'P-01',
+          name: 'Meseta Hiperárida Norte',
+          shortName: 'Meseta Norte',
+          analogLabel: 'Análogo Lunar (Cráter Shackleton)',
+          defaultTarget: 'luna',
+          areaKm2: 14.8,
+          coordsLabel: '18°11\'04"S 69°34\'18"W • ALT 3,920m',
+          // Coordenadas WGS84 reales para exportación GeoJSON
+          geoCoords: [
+            [-69.585, -18.175],
+            [-69.542, -18.172],
+            [-69.538, -18.208],
+            [-69.582, -18.212],
+            [-69.585, -18.175]
+          ],
+          // Puntos SVG para el mapa estilo Felt
+          svgPoints: '85,68 310,60 355,155 120,175',
+          labelPos: { x: 215, y: 118 },
+          // Eje 1: Datos Orbitales NASA
+          metalsPpm: 18,
+          uvIndex: 7.2,
+          pressureHpa: 760,
+          // Eje 2: Umbrales Clínicos y Biomarcadores Salivales
+          cardioRisk: 18,
+          ocularRisk: 22,
+          cortisol: 9.5,
+          sIga: 145,
+          // Eje 3: Derecho de Protección Planetaria
+          cospar: 'II',
+          artemis: 'compliant',
+          // Métricas comparador orbital
+          orbitalMetrics: {
+            luna: {
+              similarity: '92.6%',
+              similaritySub: 'Regolito anhidro de tierras altas',
+              slope: '11.4°',
+              slopeSub: 'Óptimo para aterrizador y EVA',
+              albedo: '0.15 • Anortosita',
+              albedoSub: 'Baja dispersión térmica',
+              stress: '+14% Carga',
+              stressSub: 'Demanda metabólica nominal'
+            },
+            marte: {
+              similarity: '74.1%',
+              similaritySub: 'Planicie eólica basáltica',
+              slope: '11.4°',
+              slopeSub: 'Tránsito de rover sin restricciones',
+              albedo: '0.15 • Basalto seco',
+              albedoSub: 'Baja oxidación superficial',
+              stress: '+19% Carga',
+              stressSub: 'Estrés térmico moderado'
+            }
+          }
+        },
+        'P-02': {
+          id: 'P-02',
+          name: 'Ladera Volcánica Alta',
+          shortName: 'Ladera Volcánica',
+          analogLabel: 'Análogo Marciano (Cráter Jezero)',
+          defaultTarget: 'marte',
+          areaKm2: 22.4,
+          coordsLabel: '18°13\'45"S 69°26\'50"W • ALT 4,890m',
+          geoCoords: [
+            [-69.465, -18.210],
+            [-69.412, -18.205],
+            [-69.405, -18.258],
+            [-69.460, -18.262],
+            [-69.465, -18.210]
+          ],
+          svgPoints: '475,55 725,75 740,195 495,180',
+          labelPos: { x: 610, y: 125 },
+          metalsPpm: 68,
+          uvIndex: 11.8,
+          pressureHpa: 545,
+          cardioRisk: 54,
+          ocularRisk: 58,
+          cortisol: 17.5,
+          sIga: 94,
+          cospar: 'III',
+          artemis: 'review',
+          orbitalMetrics: {
+            luna: {
+              similarity: '78.3%',
+              similaritySub: 'Borde escarpado de cráter',
+              slope: '23.8°',
+              slopeSub: 'Requiere anclaje en pendiente',
+              albedo: '0.11 • Piroclasto',
+              albedoSub: 'Absorción solar elevada',
+              stress: '+36% Carga',
+              stressSub: 'Hipoxia hipobárica moderada'
+            },
+            marte: {
+              similarity: '94.2%',
+              similaritySub: 'Estratigrafía volcánica Jezero',
+              slope: '23.8°',
+              slopeSub: 'Análogo de escarpe deltaico',
+              albedo: '0.11 • Olivino/Piroxeno',
+              albedoSub: 'Firma espectral CRISM/EMIT',
+              stress: '+38% Carga',
+              stressSub: 'Fatiga ventilatoria por altitud'
+            }
+          }
+        },
+        'P-03': {
+          id: 'P-03',
+          name: 'Cuenca con Relaves Mineros Tóxicos',
+          shortName: 'Cuenca Relaves',
+          analogLabel: 'Zona Crítica — Toxicidad y COSPAR',
+          defaultTarget: 'marte',
+          areaKm2: 9.6,
+          coordsLabel: '18°18\'12"S 69°27\'15"W • ALT 4,210m',
+          geoCoords: [
+            [-69.472, -18.290],
+            [-69.420, -18.288],
+            [-69.415, -18.332],
+            [-69.468, -18.335],
+            [-69.472, -18.290]
+          ],
+          svgPoints: '445,260 715,275 705,390 455,375',
+          labelPos: { x: 580, y: 325 },
+          metalsPpm: 295,
+          uvIndex: 13.9,
+          pressureHpa: 610,
+          cardioRisk: 82,
+          ocularRisk: 79,
+          cortisol: 26.5,
+          sIga: 56,
+          cospar: 'IVb',
+          artemis: 'non_compliant',
+          orbitalMetrics: {
+            luna: {
+              similarity: '64.0%',
+              similaritySub: 'Polvo fino abrasivo análogo',
+              slope: '6.5°',
+              slopeSub: 'Cuenca sedimentaria plana',
+              albedo: '0.24 • Sulfatos/Óxidos',
+              albedoSub: 'Alta dispersión de partículas',
+              stress: '+64% Carga',
+              stressSub: 'Riesgo neumoconiosis aguda'
+            },
+            marte: {
+              similarity: '86.5%',
+              similaritySub: 'Análogo suelos con percloratos',
+              slope: '6.5°',
+              slopeSub: 'Lecho lacustre evaporítico',
+              albedo: '0.24 • Jarosita/Arsénico',
+              albedoSub: 'Toxicidad química extrema',
+              stress: '+68% Carga',
+              stressSub: 'Alerta toxicológica y eje HPA'
+            }
+          }
+        },
+        'P-04': {
+          id: 'P-04',
+          name: 'Corredor Geotérmico Sur',
+          shortName: 'Corredor Sur',
+          analogLabel: 'Precaución Biofirma y Artemisa',
+          defaultTarget: 'marte',
+          areaKm2: 11.2,
+          coordsLabel: '18°17\'40"S 69°35\'05"W • ALT 4,050m',
+          geoCoords: [
+            [-69.602, -18.282],
+            [-69.552, -18.280],
+            [-69.548, -18.325],
+            [-69.598, -18.328],
+            [-69.602, -18.282]
+          ],
+          svgPoints: '80,250 345,265 335,388 95,372',
+          labelPos: { x: 215, y: 318 },
+          metalsPpm: 84,
+          uvIndex: 10.6,
+          pressureHpa: 625,
+          cardioRisk: 46,
+          ocularRisk: 49,
+          cortisol: 16.0,
+          sIga: 102,
+          cospar: 'IVa',
+          artemis: 'review',
+          orbitalMetrics: {
+            luna: {
+              similarity: '69.8%',
+              similaritySub: 'Ventilas volátiles polares',
+              slope: '15.9°',
+              slopeSub: 'Terreno fracturado con fisuras',
+              albedo: '0.29 • Sílice opalina',
+              albedoSub: 'Gradiente térmico activo',
+              stress: '+29% Carga',
+              stressSub: 'Exposición a aerosoles ácidos'
+            },
+            marte: {
+              similarity: '95.8%',
+              similaritySub: 'Depósitos hidrotermales Jezero',
+              slope: '15.9°',
+              slopeSub: 'Fallas con preservación orgánica',
+              albedo: '0.29 • Sílice/Carbonatos',
+              albedoSub: 'Objetivo astrobiológico clave',
+              stress: '+31% Carga',
+              stressSub: 'Protocolo estricto de contención'
+            }
+          }
+        }
+      };
+
+      // Estado global reactivo de la aplicación
+      const appState = {
+        selectedPolygonId: 'P-01',
+        role: 'agencia', // 'agencia' | 'investigador' | 'legislador'
+        mapLayer: 'relieve', // 'relieve' | 'emit' | 'uv'
+        orbitalTarget: 'luna', // 'luna' | 'marte'
+        swipePercent: 50,
+        // Valores actuales de simulación (inicializados con P-01)
+        sim: {
+          metalsPpm: 18,
+          uvIndex: 7.2,
+          pressureHpa: 760,
+          cardioRisk: 18,
+          ocularRisk: 22,
+          cortisol: 9.5,
+          sIga: 145,
+          cospar: 'II',
+          artemis: 'compliant'
+        },
+        // Caché de evaluaciones por polígono para reflejar cambios en el mapa y GeoJSON
+        evaluations: {}
+      };
+
+      // Referencias DOM
+      const dom = {
+        headerCoords: document.getElementById('headerCoords'),
+        roleButtons: document.querySelectorAll('.role-btn'),
+        mapLayerButtons: document.querySelectorAll('.map-layer-btn'),
+        layerEmitOverlay: document.getElementById('layerEmitOverlay'),
+        layerUvOverlay: document.getElementById('layerUvOverlay'),
+        polygonsGroup: document.getElementById('polygonsGroup'),
+        polygonCardsGrid: document.getElementById('polygonCardsGrid'),
+        btnDownloadGeoJSON: document.getElementById('btnDownloadGeoJSON'),
+        btnResetSim: document.getElementById('btnResetSim'),
+        simPolyTitle: document.getElementById('simPolyTitle'),
+        // Semáforo
+        trafficLightBox: document.getElementById('trafficLightBox'),
+        lampRed: document.getElementById('lampRed'),
+        lampYellow: document.getElementById('lampYellow'),
+        lampGreen: document.getElementById('lampGreen'),
+        statusBadge: document.getElementById('statusBadge'),
+        compositeScoreVal: document.getElementById('compositeScoreVal'),
+        compositeScoreBar: document.getElementById('compositeScoreBar'),
+        vetoJustification: document.getElementById('vetoJustification'),
+        // Sliders y selects
+        sliderMetals: document.getElementById('sliderMetals'),
+        valMetals: document.getElementById('valMetals'),
+        sliderUv: document.getElementById('sliderUv'),
+        valUv: document.getElementById('valUv'),
+        sliderPressure: document.getElementById('sliderPressure'),
+        valPressure: document.getElementById('valPressure'),
+        sliderCardio: document.getElementById('sliderCardio'),
+        valCardio: document.getElementById('valCardio'),
+        sliderOcular: document.getElementById('sliderOcular'),
+        valOcular: document.getElementById('valOcular'),
+        sliderCortisol: document.getElementById('sliderCortisol'),
+        valCortisol: document.getElementById('valCortisol'),
+        sliderSiga: document.getElementById('sliderSiga'),
+        valSiga: document.getElementById('valSiga'),
+        selectCospar: document.getElementById('selectCospar'),
+        selectArtemis: document.getElementById('selectArtemis'),
+        // Comparador Orbital Swipe
+        targetButtons: document.querySelectorAll('.target-btn'),
+        swipeContainer: document.getElementById('swipeContainer'),
+        earthLayer: document.getElementById('earthLayer'),
+        swipeDivider: document.getElementById('swipeDivider'),
+        earthOrbitalSvg: document.getElementById('earthOrbitalSvg'),
+        planetarySvg: document.getElementById('planetarySvg'),
+        leftLabelTitle: document.getElementById('leftLabelTitle'),
+        rightLabelSensor: document.getElementById('rightLabelSensor'),
+        rightLabelTitle: document.getElementById('rightLabelTitle'),
+        bottomRightBodyTag: document.getElementById('bottomRightBodyTag'),
+        swipePresets: document.querySelectorAll('.swipe-preset'),
+        metricSimilarity: document.getElementById('metricSimilarity'),
+        metricSimilaritySub: document.getElementById('metricSimilaritySub'),
+        metricSlope: document.getElementById('metricSlope'),
+        metricSlopeSub: document.getElementById('metricSlopeSub'),
+        metricAlbedo: document.getElementById('metricAlbedo'),
+        metricAlbedoSub: document.getElementById('metricAlbedoSub'),
+        metricStress: document.getElementById('metricStress'),
+        metricStressSub: document.getElementById('metricStressSub'),
+        // Dictamen Preventivo
+        btnCopyBrief: document.getElementById('btnCopyBrief'),
+        dictamenRoleBadge: document.getElementById('dictamenRoleBadge'),
+        dictamenCode: document.getElementById('dictamenCode'),
+        dictamenHeadline: document.getElementById('dictamenHeadline'),
+        dictamenSummary: document.getElementById('dictamenSummary'),
+        dictamenActionsList: document.getElementById('dictamenActionsList'),
+        dictamenTimestamp: document.getElementById('dictamenTimestamp'),
+        toastContainer: document.getElementById('toastContainer')
+      };
+
+      /**
+       * Muestra una notificación flotante no intrusiva (reemplaza alert()).
+       */
+      function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const colors = {
+          success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
+          info: 'bg-sky-950/95 border-sky-500/50 text-sky-200',
+          warning: 'bg-amber-950/95 border-amber-500/50 text-amber-200'
+        };
+        toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border backdrop-blur-md shadow-xl text-xs font-medium flex items-center gap-2 transition-all duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+        toast.innerHTML = `
+          <span class="w-2 h-2 rounded-full ${type === 'success' ? 'bg-emerald-400' : 'bg-sky-400'}"></span>
+          <span>${message}</span>
+        `;
+        dom.toastContainer.appendChild(toast);
+
+        requestAnimationFrame(() => {
+          toast.classList.remove('translate-y-2', 'opacity-0');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3400);
+      }
+
+      /**
+       * Motor de Evaluación Multidisciplinaria con Lógica de Veto Crítico.
+       * Evalúa simultáneamente los 3 ejes (Orbital NASA, Clínico/Salival, Derecho Espacial).
+       */
+      function evaluateRisk(params) {
+        const vetoes = [];
+        const warnings = [];
+
+        // 1. Verificación de Umbrales Críticos (Veto Inmediato -> ROJO)
+        if (params.metalsPpm > 180) {
+          vetoes.push(`Veto Orbital (EMIT/ASTER): Concentración crítica de metales pesados y relaves tóxicos (${params.metalsPpm} ppm > 180 ppm).`);
+        } else if (params.metalsPpm > 55) {
+          warnings.push(`Presencia moderada de material particulado mineral (${params.metalsPpm} ppm).`);
+        }
+
+        if (params.uvIndex > 13.5) {
+          vetoes.push(`Veto Orbital (OMI): Irradiancia ultravioleta extrema (${params.uvIndex.toFixed(1)} UV > 13.5).`);
+        } else if (params.uvIndex > 9.5) {
+          warnings.push(`Radiación UV elevada (${params.uvIndex.toFixed(1)} UV) requiere blindaje ocular UV400.`);
+        }
+
+        if (params.pressureHpa < 480) {
+          vetoes.push(`Veto Atmosférico (MERRA-2): Hipoxia barométrica severa (${params.pressureHpa} hPa < 480 hPa).`);
+        } else if (params.pressureHpa < 650) {
+          warnings.push(`Presión atmosférica reducida (${params.pressureHpa} hPa) con riesgo de hipoxia hipobárica.`);
+        }
+
+        if (params.cardioRisk > 75) {
+          vetoes.push(`Veto Clínico: Riesgo agudo de patología cardiopulmonar (${params.cardioRisk}% > 75%).`);
+        } else if (params.cardioRisk > 40) {
+          warnings.push(`Estrés cardiopulmonar moderado (${params.cardioRisk}%) bajo esfuerzo EVA.`);
+        }
+
+        if (params.ocularRisk > 75) {
+          vetoes.push(`Veto Clínico: Umbral crítico de fotoqueratitis y daño corneal (${params.ocularRisk}% > 75%).`);
+        } else if (params.ocularRisk > 40) {
+          warnings.push(`Riesgo de irritación ocular actínica (${params.ocularRisk}%).`);
+        }
+
+        if (params.cortisol > 24.0) {
+          vetoes.push(`Veto Biomarcador: Hipercortisolemia salival aguda (${params.cortisol.toFixed(1)} nmol/L > 24.0 nmol/L).`);
+        } else if (params.cortisol > 15.0) {
+          warnings.push(`Elevación moderada de cortisol salival (${params.cortisol.toFixed(1)} nmol/L).`);
+        }
+
+        if (params.sIga < 65) {
+          vetoes.push(`Veto Biomarcador: Inmunosupresión mucosa crítica (sIgA ${params.sIga} µg/mL < 65 µg/mL).`);
+        } else if (params.sIga < 110) {
+          warnings.push(`Descenso preventivo de inmunoglobulina A salival (${params.sIga} µg/mL).`);
+        }
+
+        if (params.cospar === 'IVb') {
+          vetoes.push(`Veto Jurídico (COSPAR Cat. IVb): Alto riesgo de contaminación biológica directa o inversa.`);
+        } else if (params.cospar === 'III' || params.cospar === 'IVa') {
+          warnings.push(`Protocolo COSPAR Cat. ${params.cospar}: Requiere esterilización de instrumental y control de biofirmas.`);
+        }
+
+        if (params.artemis === 'non_compliant') {
+          vetoes.push(`Veto Jurídico (Acuerdos Artemisa): Incumplimiento de Secciones 9 y 11 por pasivos ambientales sin remediar.`);
+        } else if (params.artemis === 'review') {
+          warnings.push(`Acuerdos Artemisa Sec. 11: Requiere notificación previa y delimitación de Zona de Seguridad.`);
+        }
+
+        // 2. Cálculo del Puntaje Compuesto de Seguridad (0 a 100, donde 100 es máxima seguridad)
+        const sMetals = Math.max(0, 100 - (params.metalsPpm / 320) * 100);
+        const sUv = Math.max(0, 100 - ((params.uvIndex - 1) / 15) * 100);
+        const sPressure = Math.min(100, Math.max(0, ((params.pressureHpa - 350) / (1013 - 350)) * 100));
+        const orbitalScore = (sMetals * 0.45 + sUv * 0.30 + sPressure * 0.25);
+
+        const sCardio = 100 - params.cardioRisk;
+        const sOcular = 100 - params.ocularRisk;
+        const sCortisol = Math.max(0, 100 - ((params.cortisol - 4) / 31) * 100);
+        const sSiga = Math.min(100, Math.max(0, ((params.sIga - 30) / 170) * 100));
+        const clinicalScore = (sCardio * 0.30 + sOcular * 0.25 + sCortisol * 0.25 + sSiga * 0.20);
+
+        const cosparMap = { 'I': 100, 'II': 92, 'III': 74, 'IVa': 65, 'IVb': 20 };
+        const artemisMap = { 'compliant': 100, 'review': 68, 'non_compliant': 15 };
+        const legalScore = (cosparMap[params.cospar] * 0.55 + artemisMap[params.artemis] * 0.45);
+
+        let compositeScore = Math.round(orbitalScore * 0.35 + clinicalScore * 0.35 + legalScore * 0.30);
+
+        // Si existe veto crítico, limitar el techo visual del puntaje compuesto para consistencia operativa
+        if (vetoes.length > 0 && compositeScore > 44) {
+          compositeScore = Math.max(12, 44 - vetoes.length * 6);
+        }
+
+        // 3. Determinación del Nivel del Semáforo
+        let level = 'green'; // 'green' | 'yellow' | 'red'
+        let statusLabel = 'VERDE — DESPLIEGUE AUTORIZADO';
+        let colorHex = '#10B981';
+
+        if (vetoes.length > 0 || compositeScore < 48) {
+          level = 'red';
+          statusLabel = vetoes.length > 0 ? 'ROJO — VETO CRÍTICO ACTIVO' : 'ROJO — DESPLIEGUE RESTRINGIDO';
+          colorHex = '#EF4444';
+        } else if (warnings.length > 0 || compositeScore < 78) {
+          level = 'yellow';
+          statusLabel = 'AMARILLO — DESPLIEGUE CONDICIONADO';
+          colorHex = '#F59E0B';
+        }
+
+        return {
+          level,
+          statusLabel,
+          colorHex,
+          compositeScore,
+          vetoes,
+          warnings
+        };
+      }
+
+      /**
+       * Inicializa el estado de evaluación de todos los polígonos al cargar.
+       */
+      function initAllEvaluations() {
+        Object.keys(POLYGONS_DATA).forEach((id) => {
+          const p = POLYGONS_DATA[id];
+          appState.evaluations[id] = evaluateRisk(p);
+        });
+      }
+
+      /**
+       * Renderiza el mapa interactivo de polígonos estilo Felt y las tarjetas inferiores.
+       */
+      function renderFeltMap() {
+        dom.polygonsGroup.innerHTML = '';
+        dom.polygonCardsGrid.innerHTML = '';
+
+        Object.keys(POLYGONS_DATA).forEach((id) => {
+          const poly = POLYGONS_DATA[id];
+          const evalRes = appState.evaluations[id];
+          const isSelected = appState.selectedPolygonId === id;
+
+          const statusWord = evalRes.level === 'green' ? 'ÓPTIMO' : evalRes.level === 'yellow' ? 'PRECAUCIÓN' : 'CRÍTICO';
+
+          // 1. Elemento SVG del Polígono en el mapa Felt
+          const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          g.setAttribute('class', 'felt-polygon');
+          g.setAttribute('role', 'button');
+          g.setAttribute('tabindex', '0');
+          g.setAttribute('aria-label', `${poly.id}: ${poly.name} - Estado ${statusWord}`);
+
+          const polygonEl = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          polygonEl.setAttribute('points', poly.svgPoints);
+          polygonEl.setAttribute('fill', evalRes.colorHex);
+          polygonEl.setAttribute('fill-opacity', isSelected ? '0.38' : '0.22');
+          polygonEl.setAttribute('stroke', evalRes.colorHex);
+          polygonEl.setAttribute('stroke-width', isSelected ? '3.2' : '2');
+          polygonEl.setAttribute('stroke-linejoin', 'round');
+          if (isSelected) {
+            polygonEl.setAttribute('filter', 'url(#selectedPolyGlow)');
+          }
+
+          // Vértices estilo nodo CAD/Felt en las esquinas
+          const pointsArr = poly.svgPoints.split(' ').map(pair => pair.split(',').map(Number));
+          g.appendChild(polygonEl);
+
+          pointsArr.forEach(([vx, vy]) => {
+            const vertex = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            vertex.setAttribute('cx', vx);
+            vertex.setAttribute('cy', vy);
+            vertex.setAttribute('r', isSelected ? '4' : '2.8');
+            vertex.setAttribute('fill', '#0F172A');
+            vertex.setAttribute('stroke', evalRes.colorHex);
+            vertex.setAttribute('stroke-width', '2');
+            g.appendChild(vertex);
+          });
+
+          // Etiqueta flotante estilo Felt sobre el centroide del polígono
+          const pillW = 148;
+          const pillH = 44;
+          const px = poly.labelPos.x - pillW / 2;
+          const py = poly.labelPos.y - pillH / 2;
+
+          const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          labelBg.setAttribute('x', px);
+          labelBg.setAttribute('y', py);
+          labelBg.setAttribute('width', pillW);
+          labelBg.setAttribute('height', pillH);
+          labelBg.setAttribute('rx', '8');
+          labelBg.setAttribute('fill', isSelected ? '#0F172A' : '#090E1A');
+          labelBg.setAttribute('fill-opacity', '0.92');
+          labelBg.setAttribute('stroke', isSelected ? '#38BDF8' : evalRes.colorHex);
+          labelBg.setAttribute('stroke-width', isSelected ? '1.8' : '1.2');
+          g.appendChild(labelBg);
+
+          const textTop = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textTop.setAttribute('x', poly.labelPos.x);
+          textTop.setAttribute('y', py + 17);
+          textTop.setAttribute('text-anchor', 'middle');
+          textTop.setAttribute('fill', '#F8FAFC');
+          textTop.setAttribute('font-size', '11');
+          textTop.setAttribute('font-weight', '700');
+          textTop.setAttribute('font-family', 'Inter, sans-serif');
+          textTop.textContent = `${poly.id}: ${poly.shortName}`;
+          g.appendChild(textTop);
+
+          const textSub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textSub.setAttribute('x', poly.labelPos.x);
+          textSub.setAttribute('y', py + 33);
+          textSub.setAttribute('text-anchor', 'middle');
+          textSub.setAttribute('fill', evalRes.colorHex);
+          textSub.setAttribute('font-size', '10');
+          textSub.setAttribute('font-weight', '700');
+          textSub.setAttribute('font-family', 'JetBrains Mono, monospace');
+          textSub.textContent = `${poly.areaKm2} km² • ${statusWord}`;
+          g.appendChild(textSub);
+
+          g.addEventListener('click', () => selectPolygon(id));
+          g.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              selectPolygon(id);
+            }
+          });
+
+          dom.polygonsGroup.appendChild(g);
+
+          // 2. Tarjeta de selección rápida debajo del mapa
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = `text-left p-2.5 rounded-xl border transition-all flex flex-col justify-between ${
+            isSelected
+              ? 'bg-slate-800/90 border-sky-400 shadow-md shadow-sky-950/40'
+              : 'bg-space-950/70 border-slate-800 hover:border-slate-700 hover:bg-space-900'
+          }`;
+
+          const badgeClasses =
+            evalRes.level === 'green'
+              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35'
+              : evalRes.level === 'yellow'
+              ? 'bg-amber-500/15 text-amber-300 border-amber-500/35'
+              : 'bg-red-500/15 text-red-300 border-red-500/35';
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-1 w-full mb-1">
+              <span class="font-mono text-xs font-bold text-white">${poly.id}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${badgeClasses}">
+                ${statusWord}
+              </span>
+            </div>
+            <div class="text-xs font-semibold text-slate-200 leading-snug line-clamp-1">${poly.name}</div>
+            <div class="flex items-center justify-between w-full mt-1.5 text-[10px] font-mono text-slate-400">
+              <span>${poly.areaKm2} km²</span>
+              <span>Índice: ${evalRes.compositeScore}/100</span>
+            </div>
+          `;
+
+          card.addEventListener('click', () => selectPolygon(id));
+          dom.polygonCardsGrid.appendChild(card);
+        });
+      }
+
+      /**
+       * Selecciona un polígono diagnóstico y sincroniza todos los módulos.
+       */
+      function selectPolygon(id) {
+        appState.selectedPolygonId = id;
+        const poly = POLYGONS_DATA[id];
+
+        // Cargar variables del polígono en el simulador
+        appState.sim = {
+          metalsPpm: poly.metalsPpm,
+          uvIndex: poly.uvIndex,
+          pressureHpa: poly.pressureHpa,
+          cardioRisk: poly.cardioRisk,
+          ocularRisk: poly.ocularRisk,
+          cortisol: poly.cortisol,
+          sIga: poly.sIga,
+          cospar: poly.cospar,
+          artemis: poly.artemis
+        };
+
+        // Sincronizar destino planetario análogo recomendado
+        setOrbitalTarget(poly.defaultTarget, false);
+
+        // Actualizar encabezados
+        dom.headerCoords.textContent = `SECTOR ${poly.id}: ${poly.coordsLabel}`;
+        dom.simPolyTitle.textContent = `${poly.id}: ${poly.name}`;
+        dom.leftLabelTitle.textContent = `${poly.id}: ${poly.name}`;
+
+        syncControlsFromState();
+        recalculateAndRenderAll();
+      }
+
+      /**
+       * Sincroniza los valores de los sliders y selects HTML con `appState.sim`.
+       */
+      function syncControlsFromState() {
+        const s = appState.sim;
+        dom.sliderMetals.value = s.metalsPpm;
+        dom.valMetals.textContent = `${s.metalsPpm} ppm`;
+
+        dom.sliderUv.value = s.uvIndex;
+        dom.valUv.textContent = `${Number(s.uvIndex).toFixed(1)} UV`;
+
+        dom.sliderPressure.value = s.pressureHpa;
+        dom.valPressure.textContent = `${s.pressureHpa} hPa`;
+
+        dom.sliderCardio.value = s.cardioRisk;
+        dom.valCardio.textContent = `${s.cardioRisk}%`;
+
+        dom.sliderOcular.value = s.ocularRisk;
+        dom.valOcular.textContent = `${s.ocularRisk}%`;
+
+        dom.sliderCortisol.value = s.cortisol;
+        dom.valCortisol.textContent = `${Number(s.cortisol).toFixed(1)} nmol/L`;
+
+        dom.sliderSiga.value = s.sIga;
+        dom.valSiga.textContent = `${s.sIga} µg/mL`;
+
+        dom.selectCospar.value = s.cospar;
+        dom.selectArtemis.value = s.artemis;
+      }
+
+      /**
+       * Recalcula el semáforo y actualiza la UI de los 4 módulos.
+       */
+      function recalculateAndRenderAll() {
+        const currentId = appState.selectedPolygonId;
+        const evaluation = evaluateRisk(appState.sim);
+        appState.evaluations[currentId] = evaluation;
+
+        renderTrafficLight(evaluation);
+        renderFeltMap();
+        renderOrbitalComparator();
+        renderPreventiveDictamen(evaluation);
+      }
+
+      /**
+       * Actualiza el panel visual del Semáforo de Riesgo Multidisciplinario.
+       */
+      function renderTrafficLight(ev) {
+        // Reiniciar lámparas
+        dom.lampRed.className = 'w-5 h-5 rounded-full bg-red-950/60 border border-red-900/60 transition-all';
+        dom.lampYellow.className = 'w-5 h-5 rounded-full bg-amber-950/60 border border-amber-900/60 transition-all';
+        dom.lampGreen.className = 'w-5 h-5 rounded-full bg-emerald-950/60 border border-emerald-900/60 transition-all';
+
+        if (ev.level === 'red') {
+          dom.lampRed.className = 'w-5 h-5 rounded-full lamp-active-red border border-red-300 transition-all';
+          dom.trafficLightBox.className = 'rounded-xl p-3.5 mb-4 border transition-all duration-300 bg-red-950/25 border-red-500/50';
+          dom.statusBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-extrabold tracking-wide uppercase bg-red-500/20 text-red-300 border border-red-500/40';
+          dom.compositeScoreVal.className = 'text-lg font-mono font-bold text-red-400';
+          dom.compositeScoreBar.className = 'h-full bg-red-500 transition-all duration-300';
+        } else if (ev.level === 'yellow') {
+          dom.lampYellow.className = 'w-5 h-5 rounded-full lamp-active-yellow border border-amber-300 transition-all';
+          dom.trafficLightBox.className = 'rounded-xl p-3.5 mb-4 border transition-all duration-300 bg-amber-950/20 border-amber-500/50';
+          dom.statusBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-extrabold tracking-wide uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40';
+          dom.compositeScoreVal.className = 'text-lg font-mono font-bold text-amber-400';
+          dom.compositeScoreBar.className = 'h-full bg-amber-500 transition-all duration-300';
+        } else {
+          dom.lampGreen.className = 'w-5 h-5 rounded-full lamp-active-green border border-emerald-300 transition-all';
+          dom.trafficLightBox.className = 'rounded-xl p-3.5 mb-4 border transition-all duration-300 bg-emerald-950/20 border-emerald-500/45';
+          dom.statusBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-extrabold tracking-wide uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+          dom.compositeScoreVal.className = 'text-lg font-mono font-bold text-emerald-400';
+          dom.compositeScoreBar.className = 'h-full bg-emerald-500 transition-all duration-300';
+        }
+
+        dom.statusBadge.textContent = ev.statusLabel;
+        dom.compositeScoreVal.textContent = `${ev.compositeScore} / 100`;
+        dom.compositeScoreBar.style.width = `${ev.compositeScore}%`;
+
+        // Justificación técnica prioritaria
+        if (ev.vetoes.length > 0) {
+          dom.vetoJustification.innerHTML = `<strong class="text-red-300">${ev.vetoes[0]}</strong>${
+            ev.vetoes.length > 1 ? ` <span class="text-red-400/90 font-mono text-[11px]">(+${ev.vetoes.length - 1} alertas críticas adicionales)</span>` : ''
+          }`;
+        } else if (ev.warnings.length > 0) {
+          dom.vetoJustification.innerHTML = `<strong class="text-amber-300">Precaución Operativa:</strong> ${ev.warnings[0]}`;
+        } else {
+          dom.vetoJustification.textContent =
+            'Todos los parámetros orbitales NASA, biomarcadores salivales y criterios COSPAR/Artemisa se encuentran dentro de rangos nominales.';
+        }
+      }
+
+      /**
+       * Renderiza las visualizaciones orbitales SVG de Tierra vs. Luna/Marte en el comparador ArcGIS Swipe.
+       */
+      function renderOrbitalComparator() {
+        const poly = POLYGONS_DATA[appState.selectedPolygonId];
+        const target = appState.orbitalTarget;
+        const m = poly.orbitalMetrics[target];
+
+        // Actualizar métricas inferiores
+        dom.metricSimilarity.textContent = m.similarity;
+        dom.metricSimilaritySub.textContent = m.similaritySub;
+        dom.metricSlope.textContent = m.slope;
+        dom.metricSlopeSub.textContent = m.slopeSub;
+        dom.metricAlbedo.textContent = m.albedo;
+        dom.metricAlbedoSub.textContent = m.albedoSub;
+        dom.metricStress.textContent = m.stress;
+        dom.metricStressSub.textContent = m.stressSub;
+
+        // Colores dinámicos para la vista orbital terrestre según toxicidad simulada
+        const toxicTint = appState.sim.metalsPpm > 180 ? '#EF4444' : appState.sim.metalsPpm > 55 ? '#F59E0B' : '#38BDF8';
+
+        // 1. Renderizar SVG Orbital Terrestre (NASA Earthdata)
+        dom.earthOrbitalSvg.innerHTML = `
+          <defs>
+            <linearGradient id="earthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1E293B" />
+              <stop offset="50%" stop-color="#292524" />
+              <stop offset="100%" stop-color="#172033" />
+            </linearGradient>
+            <radialGradient id="mineralPlume" cx="48%" cy="52%" r="42%">
+              <stop offset="0%" stop-color="${toxicTint}" stop-opacity="0.45" />
+              <stop offset="100%" stop-color="${toxicTint}" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <rect width="700" height="320" fill="url(#earthGrad)" />
+          <!-- Abanicos aluviales y crestas volcánicas -->
+          <path d="M -20,260 Q 180,140 340,190 T 720,120 L 720,320 L -20,320 Z" fill="#1C1917" opacity="0.7" />
+          <path d="M 60,40 Q 240,95 410,55 T 690,110" fill="none" stroke="#57534E" stroke-width="2" opacity="0.55" />
+          <path d="M 90,125 Q 275,175 460,135 T 680,195" fill="none" stroke="#78716C" stroke-width="1.5" opacity="0.45" />
+          <ellipse cx="340" cy="170" rx="220" ry="110" fill="url(#mineralPlume)" />
+          <!-- Retícula de telemetría orbital -->
+          <g stroke="#38BDF8" stroke-opacity="0.25" stroke-width="1">
+            <line x1="0" y1="80" x2="700" y2="80" stroke-dasharray="4 4" />
+            <line x1="0" y1="240" x2="700" y2="240" stroke-dasharray="4 4" />
+            <line x1="175" y1="0" x2="175" y2="320" stroke-dasharray="4 4" />
+            <line x1="525" y1="0" x2="525" y2="320" stroke-dasharray="4 4" />
+          </g>
+          <!-- Polígono proyectado en órbita -->
+          <polygon points="210,110 380,95 415,210 230,225" fill="${toxicTint}" fill-opacity="0.22" stroke="${toxicTint}" stroke-width="2" stroke-dasharray="6 3" />
+          <text x="312" y="165" text-anchor="middle" fill="#F8FAFC" font-family="JetBrains Mono" font-size="11" font-weight="bold">
+            ANÁLOGO ${poly.id} (${appState.sim.metalsPpm} ppm)
+          </text>
+        `;
+
+        // 2. Renderizar SVG Planetario (Luna Shackleton LRO o Marte Jezero MRO)
+        if (target === 'luna') {
+          dom.rightLabelSensor.textContent = 'NASA LRO • LOLA DEM (POLO SUR)';
+          dom.rightLabelTitle.textContent = 'Luna — Cráter Shackleton (89.9°S)';
+          dom.bottomRightBodyTag.textContent = 'LUNA (LRO)';
+
+          dom.planetarySvg.innerHTML = `
+            <defs>
+              <radialGradient id="lunarSurface" cx="55%" cy="50%" r="60%">
+                <stop offset="0%" stop-color="#090D16" />
+                <stop offset="48%" stop-color="#334155" />
+                <stop offset="72%" stop-color="#64748B" />
+                <stop offset="100%" stop-color="#1E293B" />
+              </radialGradient>
+            </defs>
+            <rect width="700" height="320" fill="url(#lunarSurface)" />
+            <!-- Cráteres secundarios de impacto -->
+            <circle cx="140" cy="85" r="28" fill="#1E293B" stroke="#94A3B8" stroke-width="1.2" opacity="0.6" />
+            <circle cx="585" cy="245" r="36" fill="#0F172A" stroke="#94A3B8" stroke-width="1.4" opacity="0.65" />
+            <circle cx="520" cy="75" r="19" fill="#1E293B" stroke="#CBD5E1" stroke-width="1" opacity="0.5" />
+            <!-- Borde principal del Cráter Shackleton y Zona de Sombra Permanente (PSR) -->
+            <circle cx="385" cy="165" r="108" fill="#050811" stroke="#CBD5E1" stroke-width="2.5" stroke-opacity="0.75" />
+            <circle cx="385" cy="165" r="122" fill="none" stroke="#94A3B8" stroke-width="1" stroke-dasharray="5 4" />
+            <!-- Elipse de aterrizaje Artemisa en cresta iluminada -->
+            <ellipse cx="485" cy="135" rx="34" ry="18" transform="rotate(-22 485 135)" fill="#A855F7" fill-opacity="0.25" stroke="#C084FC" stroke-width="1.8" />
+            <text x="385" y="168" text-anchor="middle" fill="#94A3B8" font-family="JetBrains Mono" font-size="10">
+              PSR • HIELO DE AGUA (-230°C)
+            </text>
+          `;
+        } else {
+          dom.rightLabelSensor.textContent = 'NASA MRO • HIRISE / CRISM';
+          dom.rightLabelTitle.textContent = 'Marte — Delta Cráter Jezero (18.38°N)';
+          dom.bottomRightBodyTag.textContent = 'MARTE (MRO)';
+
+          dom.planetarySvg.innerHTML = `
+            <defs>
+              <linearGradient id="marsSurface" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#451A12" />
+                <stop offset="55%" stop-color="#7C2D12" />
+                <stop offset="100%" stop-color="#3B120C" />
+              </linearGradient>
+            </defs>
+            <rect width="700" height="320" fill="url(#marsSurface)" />
+            <!-- Canales deltaicos paleolacustres Jezero -->
+            <path d="M 180,45 C 260,95 310,120 390,155 C 455,185 510,225 595,270" fill="none" stroke="#EA580C" stroke-width="14" stroke-opacity="0.35" stroke-linecap="round" />
+            <path d="M 330,130 C 395,125 460,145 550,130" fill="none" stroke="#FDBA74" stroke-width="5" stroke-opacity="0.3" />
+            <path d="M 370,150 C 420,185 460,235 485,290" fill="none" stroke="#FDBA74" stroke-width="4" stroke-opacity="0.3" />
+            <!-- Borde de cráter erosionado -->
+            <path d="M 280,15 Q 490,45 645,250" fill="none" stroke="#F97316" stroke-width="2" stroke-dasharray="6 4" opacity="0.6" />
+            <!-- Elipse de muestreo astrobiológico -->
+            <ellipse cx="445" cy="175" rx="46" ry="24" transform="rotate(18 445 175)" fill="#A855F7" fill-opacity="0.25" stroke="#E879F9" stroke-width="1.8" />
+            <text x="445" y="179" text-anchor="middle" fill="#FDF4FF" font-family="JetBrains Mono" font-size="10" font-weight="bold">
+              DELTA CARBONATOS
+            </text>
+          `;
+        }
+      }
+
+      /**
+       * Genera el Dictamen Preventivo personalizado según el Rol activo y el estado del Semáforo.
+       */
+      function renderPreventiveDictamen(ev) {
+        const poly = POLYGONS_DATA[appState.selectedPolygonId];
+        const role = appState.role;
+        const s = appState.sim;
+
+        const roleLabels = {
+          agencia: 'PERFIL: AGENCIA ESPACIAL (ARQUITECTURA DE MISIÓN)',
+          investigador: 'PERFIL: INVESTIGADOR DE CAMPO (SALUD Y BIOMARCADORES)',
+          legislador: 'PERFIL: LEGISLADOR / GOBERNANZA (COSPAR Y ARTEMISA)'
+        };
+
+        const statusShort = ev.level === 'green' ? 'VERDE' : ev.level === 'yellow' ? 'AMARILLO' : 'ROJO';
+        dom.dictamenRoleBadge.textContent = roleLabels[role];
+        dom.dictamenCode.textContent = `DICTAMEN #YPZ-${poly.id}-${statusShort}`;
+
+        let headline = '';
+        let summary = '';
+        let cards = [];
+
+        if (role === 'agencia') {
+          if (ev.level === 'green') {
+            headline = `Luz Verde Operativa: ${poly.name} apto para simulación análoga tripulada`;
+            summary = `Con un índice de seguridad de ${ev.compositeScore}/100, el polígono ${poly.id} ofrece condiciones óptimas para validar trajes EVA, rovers y protocolos de superficie previos a misiones ${appState.orbitalTarget === 'luna' ? 'Artemisa (Luna)' : 'Mars Sample Return / Tripuladas'}.`;
+            cards = [
+              { title: 'Ventana EVA Autorizada', tag: 'OPERACIONES', color: 'sky', body: `Se autorizan incursiones extravehiculares de hasta 6.5 horas continuas con presión barométrica de ${s.pressureHpa} hPa y radiación UV de ${Number(s.uvIndex).toFixed(1)}.` },
+              { title: 'Fidelidad de Entrenamiento', tag: 'INGENIERÍA', color: 'emerald', body: `Similitud geomorfológica del ${poly.orbitalMetrics[appState.orbitalTarget].similarity} permite calibrar sensores LiDAR y ruedas de rovers sin riesgo de abrasión tóxica (${s.metalsPpm} ppm).` },
+              { title: 'Certificación Pre-Despegue', tag: 'CUMPLIMIENTO', color: 'purple', body: `Conformidad plena con COSPAR Cat. ${s.cospar} y Acuerdos Artemisa; el sitio puede incorporarse al catálogo oficial de análogos.` }
+            ];
+          } else if (ev.level === 'yellow') {
+            headline = `Despliegue Condicionado: Ajustar perfil de misión en ${poly.name}`;
+            summary = `El sitio ${poly.id} mantiene alto valor científico pero presenta alertas preventivas (Índice ${ev.compositeScore}/100). Se requiere implementar contramedidas técnicas antes de autorizar el ingreso de tripulación.`;
+            cards = [
+              { title: 'Restricción de Horario EVA', tag: 'MITIGACIÓN', color: 'amber', body: `Limitar actividades de campo a ventanas matutinas (07:00–10:30) para evitar picos de UV (${Number(s.uvIndex).toFixed(1)}) y reducir sobrecarga cardiopulmonar (${s.cardioRisk}%).` },
+              { title: 'Filtración de Hábitat Presurizado', tag: 'SOPORTE VITAL', color: 'sky', body: `Instalar pre-filtros HEPA H14 en esclusas para retener particulado mineral (${s.metalsPpm} ppm) y suplementar oxígeno por altitud (${s.pressureHpa} hPa).` },
+              { title: 'Delimitación de Perímetro', tag: 'GOBERNANZA', color: 'purple', body: `Registrar coordenadas GeoJSON en Felt/ArcGIS bajo categoría COSPAR ${s.cospar} antes del despliegue logístico.` }
+            ];
+          } else {
+            headline = `VETO DE MISIÓN: Suspender despliegue tripulado en ${poly.name}`;
+            summary = `Se ha activado el protocolo de veto crítico (${ev.vetoes.length} umbral(es) excedido(s)). El despliegue humano compromete la integridad fisiológica de la tripulación o viola tratados internacionales de protección planetaria.`;
+            cards = [
+              { title: 'Causa Principal de Veto', tag: 'ALERTA ROJA', color: 'red', body: ev.vetoes[0] || 'Superación crítica de umbrales combinados de riesgo.' },
+              { title: 'Alternativa Robótica No Tripulada', tag: 'CONTINGENCIA', color: 'amber', body: `Reemplazar la incursión humana por teleoperación de rovers sellados y muestreo remoto hasta mitigar pasivos ambientales (${s.metalsPpm} ppm).` },
+              { title: 'Reubicación Recomendada', tag: 'PLANIFICACIÓN', color: 'sky', body: `Transferir la base de entrenamiento análogo hacia P-01 (Meseta Hiperárida Norte) donde los indicadores clínicos y jurídicos son nominales.` }
+            ];
+          }
+        } else if (role === 'investigador') {
+          if (ev.level === 'green') {
+            headline = `Protocolo Biomédico Nominal para Campaña en ${poly.name}`;
+            summary = `Los biomarcadores salivales basales (Cortisol ${Number(s.cortisol).toFixed(1)} nmol/L y sIgA ${s.sIga} µg/mL) indican adecuada aclimatación fisiológica para trabajo geológico y astrobiológico en campo.`;
+            cards = [
+              { title: 'Muestreo Salival No Invasivo', tag: 'BIOMARCADORES', color: 'emerald', body: `Recolectar hisopos salivales cada 12 horas (07:00 y 19:00) para vigilar estabilidad del eje HPA (Cortisol < 15 nmol/L) e inmunidad mucosa.` },
+              { title: 'Protección Ocular y Respiratoria', tag: 'EPP CAMPO', color: 'sky', body: `Uso estándar de gafas envolventes UV400 (UV actual: ${Number(s.uvIndex).toFixed(1)}) y mascarilla P95 ante polvo basáltico fino.` },
+              { title: 'Protocolo de Bioseguridad COSPAR', tag: 'MUESTREO', color: 'purple', body: `Mantener guantes estériles de nitrilo y contenedores sellados conforme a COSPAR Cat. ${s.cospar} para evitar contaminación cruzada.` }
+            ];
+          } else if (ev.level === 'yellow') {
+            headline = `Alerta Clínica Preventiva: Monitoreo Intensivo en ${poly.name}`;
+            summary = `La combinación de presión barométrica (${s.pressureHpa} hPa) y radiación UV (${Number(s.uvIndex).toFixed(1)}) eleva el riesgo cardiopulmonar (${s.cardioRisk}%) y ocular (${s.ocularRisk}%). Se exige vigilancia biomédica reforzada.`;
+            cards = [
+              { title: 'Control Salival cada 6 Horas', tag: 'VIGILANCIA', color: 'amber', body: `Monitorear Cortisol (${Number(s.cortisol).toFixed(1)} nmol/L) y sIgA (${s.sIga} µg/mL). Si sIgA desciende bajo 65 µg/mL, suspender caminata de inmediato.` },
+              { title: 'EPP Respiratorio y Ocular Grado II', tag: 'PROTECCIÓN', color: 'sky', body: `Respirador elastomérico con filtros P100 contra metales pesados (${s.metalsPpm} ppm) y visor policarbonato filtro UV400 + hidratación ocular.` },
+              { title: 'Oximetría y Frecuencia Cardíaca', tag: 'CLÍNICA', color: 'emerald', body: `Registrar SpO2 cada 2 horas; activar descenso médico si SpO2 < 86% o aparece disnea en reposo.` }
+            ];
+          } else {
+            headline = `EVACUACIÓN / NO INGRESO CLÍNICO: Riesgo Agudo en ${poly.name}`;
+            summary = `Los parámetros ambientales y biomarcadores salivales superan los límites seguros de exposición humana. Riesgo elevado de edema pulmonar de altitud, fotoqueratitis aguda o intoxicación por metales pesados.`;
+            cards = [
+              { title: 'Riesgo Fisiológico Inminente', tag: 'EMERGENCIA', color: 'red', body: `Riesgo Cardiopulmonar: ${s.cardioRisk}% | Riesgo Ocular: ${s.ocularRisk}% | Cortisol Salival: ${Number(s.cortisol).toFixed(1)} nmol/L | sIgA: ${s.sIga} µg/mL.` },
+              { title: 'Descontaminación y Retiro', tag: 'PROTOCOLO', color: 'amber', body: `Si hay personal en el perímetro ${poly.id}, ejecutar lavado ocular estéril, retiro de vestimenta contaminada por relaves (${s.metalsPpm} ppm) y descenso a cota < 3,000 m.` },
+              { title: 'Cuarentena de Muestras', tag: 'BIOSEGURIDAD', color: 'purple', body: `Aislar cualquier muestra recolectada bajo contención biológica estricta (COSPAR Cat. ${s.cospar}).` }
+            ];
+          }
+        } else {
+          // Rol: Legislador / Gobernanza
+          if (ev.level === 'green') {
+            headline = `Viabilidad Jurídica Aprobada: Marco Modelo COSPAR y Acuerdos Artemisa`;
+            summary = `El polígono ${poly.id} (${poly.name}) cumple íntegramente con las obligaciones internacionales de no contaminación biológica y preservación ambiental, sirviendo como modelo regulatorio nacional.`;
+            cards = [
+              { title: 'Conformidad COSPAR', tag: 'DERECHO ESPACIAL', color: 'purple', body: `Clasificado en Categoría ${s.cospar}: procedimientos de inventario orgánico validados y riesgo nulo de biocontaminación irreversible.` },
+              { title: 'Acuerdos Artemisa (Sec. 9 y 11)', tag: 'GOBERNANZA', color: 'sky', body: `Cumple la Sección 9 (preservación de sitios científicos) y Sección 11 (transparencia y coordinación de zonas de seguridad).` },
+              { title: 'Resolución Habilitante', tag: 'POLÍTICA PÚBLICA', color: 'emerald', body: `Se recomienda emitir decreto de Declaratoria de Zona Científica Análoga con exportación oficial de polígonos GeoJSON.` }
+            ];
+          } else if (ev.level === 'yellow') {
+            headline = `Autorización Condicionada a Regulación Ambiental y Zonificación`;
+            summary = `Antes de certificar ${poly.name} para cooperación espacial internacional, se requiere armonizar la normativa minera/ambiental local con los estándares de protección planetaria.`;
+            cards = [
+              { title: 'Delimitación de Zona de Seguridad', tag: 'ARTEMISA SEC. 11', color: 'amber', body: `Establecer un buffer geoespacial de 500 m alrededor de ${poly.id} para evitar interferencia de actividades extractivas o turísticas cercanas.` },
+              { title: 'Auditoría COSPAR Cat. ' + s.cospar, tag: 'PROTECCIÓN', color: 'purple', body: `Exigir evaluación de impacto microbiológico previo para proteger extremófilos nativos análogos a biofirmas marcianas.` },
+              { title: 'Trazabilidad Abierta', tag: 'TRANSPARENCIA', color: 'sky', body: `Publicar la capa GeoJSON diagnóstica en el repositorio nacional interoperable con NASA Earthdata y Felt.` }
+            ];
+          } else {
+            headline = `MORATORIA LEGAL: Incumplimiento de Protección Planetaria y Pasivos Tóxicos`;
+            summary = `El polígono ${poly.id} presenta pasivos ambientales críticos (${s.metalsPpm} ppm) o conflicto normativo bajo COSPAR Cat. ${s.cospar} y Acuerdos Artemisa, impidiendo su acreditación internacional.`;
+            cards = [
+              { title: 'Dictamen de Inviabilidad Jurídica', tag: 'VETO LEGAL', color: 'red', body: ev.vetoes.find(v => v.includes('Jurídico')) || `Contaminación superficial (${s.metalsPpm} ppm) incompatible con los principios de uso sostenible y prevención de daños.` },
+              { title: 'Mandato de Remediación Ambiental', tag: 'LEGISLACIÓN', color: 'amber', body: `Ordenar el encapsulamiento y remediación de relaves mineros tóxicos antes de reconsiderar el sitio para investigación aeroespacial.` },
+              { title: 'Sanción y Bloqueo de Permisos', tag: 'FISCALIZACIÓN', color: 'purple', body: `Denegar permisos de exploración tripulada hasta verificar reducción de metales pesados < 55 ppm mediante monitoreo satelital EMIT.` }
+            ];
+          }
+        }
+
+        dom.dictamenHeadline.textContent = headline;
+        dom.dictamenSummary.textContent = summary;
+
+        const badgeColorMap = {
+          sky: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+          emerald: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+          amber: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+          red: 'bg-red-500/15 text-red-300 border-red-500/30',
+          purple: 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+        };
+
+        dom.dictamenActionsList.innerHTML = cards
+          .map(
+            (c) => `
+            <div class="p-3 rounded-xl bg-space-950/75 border border-slate-800/90">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-xs font-bold text-slate-100">${c.title}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${badgeColorMap[c.color]}">${c.tag}</span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">${c.body}</p>
+            </div>
+          `
+          )
+          .join('');
+
+        const now = new Date();
+        dom.dictamenTimestamp.textContent = `ACTUALIZADO: ${now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+      }
+
+      /**
+       * Cambia el cuerpo planetario objetivo en el comparador orbital ArcGIS Swipe.
+       */
+      function setOrbitalTarget(target, shouldRender = true) {
+        appState.orbitalTarget = target;
+        dom.targetButtons.forEach((btn) => {
+          const active = btn.dataset.target === target;
+          btn.className = active
+            ? 'target-btn px-2.5 py-1 rounded-lg bg-slate-800 text-sky-300 font-semibold border border-sky-500/30'
+            : 'target-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-semibold';
+        });
+        if (shouldRender) {
+          renderOrbitalComparator();
+        }
+      }
+
+      /**
+       * Actualiza la posición del divisor horizontal (Swipe) del visor ArcGIS.
+       */
+      function updateSwipePosition(percent) {
+        const clamped = Math.max(4, Math.min(96, percent));
+        appState.swipePercent = clamped;
+        dom.earthLayer.style.clipPath = `inset(0 ${100 - clamped}% 0 0)`;
+        dom.swipeDivider.style.left = `${clamped}%`;
+      }
+
+      /**
+       * Genera y descarga un archivo .geojson real compatible con Felt y ArcGIS.
+       */
+      function exportGeoJSON() {
+        const features = Object.keys(POLYGONS_DATA).map((id) => {
+          const poly = POLYGONS_DATA[id];
+          const isCurrent = id === appState.selectedPolygonId;
+          const params = isCurrent ? appState.sim : poly;
+          const ev = appState.evaluations[id];
+
+          return {
+            type: 'Feature',
+            id: poly.id,
+            properties: {
+              polygon_id: poly.id,
+              name: poly.name,
+              analog_target: poly.analogLabel,
+              area_km2: poly.areaKm2,
+              risk_level: ev.level.toUpperCase(),
+              risk_status: ev.statusLabel,
+              composite_safety_score: ev.compositeScore,
+              veto_active: ev.vetoes.length > 0,
+              veto_reasons: ev.vetoes,
+              // Variables NASA
+              nasa_emit_heavy_metals_ppm: params.metalsPpm,
+              nasa_omi_uv_index: Number(params.uvIndex),
+              nasa_merra2_pressure_hpa: params.pressureHpa,
+              // Variables Clínicas y Biomarcadores Salivales
+              clinical_cardiopulmonary_risk_pct: params.cardioRisk,
+              clinical_ocular_risk_pct: params.ocularRisk,
+              salivary_cortisol_nmol_l: Number(params.cortisol),
+              salivary_siga_ug_ml: params.sIga,
+              // Derecho Espacial
+              cospar_category: params.cospar,
+              artemis_accords_status: params.artemis,
+              // Estilos nativos compatibles con Felt
+              'felt:color': ev.colorHex,
+              'felt:strokeColor': ev.colorHex,
+              'felt:fillOpacity': 0.35,
+              'felt:strokeWidth': 3
+            },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [poly.geoCoords]
+            }
+          };
+        });
+
+        const geojsonObject = {
+          type: 'FeatureCollection',
+          name: 'YupizaEduca_Semaforo_Riesgo_Multidisciplinario',
+          metadata: {
+            platform: 'YupizaEduca (NASA Space Apps Challenge)',
+            compatible_with: ['Felt', 'ArcGIS Pro', 'ArcGIS Online', 'QGIS'],
+            generated_at: new Date().toISOString(),
+            active_role: appState.role
+          },
+          features
+        };
+
+        const blob = new Blob([JSON.stringify(geojsonObject, null, 2)], { type: 'application/geo+json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `YupizaEduca_Poligonos_Diagnosticos_${appState.selectedPolygonId}.geojson`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast(`GeoJSON descargado: ${features.length} polígonos listos para importar en Felt / ArcGIS.`, 'success');
+      }
+
+      /**
+       * Copia el dictamen preventivo al portapapeles usando un método compatible con iframes.
+       */
+      function copyDictamenToClipboard() {
+        const text = [
+          `=== YUPIZAEDUCA — DICTAMEN PREVENTIVO ANTES DEL DESPEGUE ===`,
+          `${dom.dictamenRoleBadge.textContent}`,
+          `Polígono: ${dom.simPolyTitle.textContent}`,
+          `Estado Semáforo: ${dom.statusBadge.textContent} (Índice: ${dom.compositeScoreVal.textContent})`,
+          `Resumen: ${dom.dictamenHeadline.textContent}`,
+          `${dom.dictamenSummary.textContent}`,
+          `Justificación Técnica: ${dom.vetoJustification.textContent}`
+        ].join('\n');
+
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          showToast('Dictamen preventivo copiado al portapapeles.', 'success');
+        } catch (err) {
+          showToast('No se pudo copiar automáticamente; seleccione el texto manualmente.', 'warning');
+        }
+        document.body.removeChild(textarea);
+      }
+
+      /**
+       * Registra todos los escuchadores de eventos interactivos (mouse, touch, teclado).
+       */
+      function bindEvents() {
+        // Selector de Rol
+        dom.roleButtons.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            appState.role = btn.dataset.role;
+            dom.roleButtons.forEach((b) => {
+              const active = b.dataset.role === appState.role;
+              b.className = active
+                ? 'role-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 bg-sky-500 text-slate-950 shadow-sm'
+                : 'role-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800/70';
+            });
+            renderPreventiveDictamen(appState.evaluations[appState.selectedPolygonId]);
+          });
+        });
+
+        // Selector de Capas del Mapa Felt
+        dom.mapLayerButtons.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const layer = btn.dataset.maplayer;
+            appState.mapLayer = layer;
+            dom.mapLayerButtons.forEach((b) => {
+              const active = b.dataset.maplayer === layer;
+              b.className = active
+                ? 'map-layer-btn px-2.5 py-1 rounded-lg bg-slate-800 text-sky-300 font-medium border border-sky-500/40'
+                : 'map-layer-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 font-medium border border-transparent';
+            });
+
+            dom.layerEmitOverlay.classList.toggle('hidden', layer !== 'emit');
+            dom.layerUvOverlay.classList.toggle('hidden', layer !== 'uv');
+          });
+        });
+
+        // Sliders Eje 1 (Orbital NASA) con acoplamiento fisiológico realista
+        dom.sliderMetals.addEventListener('input', (e) => {
+          const val = Number(e.target.value);
+          appState.sim.metalsPpm = val;
+          dom.valMetals.textContent = `${val} ppm`;
+          // Acoplamiento preventivo: mayor toxicidad minera incrementa riesgo cardiopulmonar
+          const coupledCardio = Math.min(98, Math.max(appState.sim.cardioRisk, Math.round(12 + (val / 400) * 78)));
+          appState.sim.cardioRisk = coupledCardio;
+          dom.sliderCardio.value = coupledCardio;
+          dom.valCardio.textContent = `${coupledCardio}%`;
+          recalculateAndRenderAll();
+        });
+
+        dom.sliderUv.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          appState.sim.uvIndex = val;
+          dom.valUv.textContent = `${val.toFixed(1)} UV`;
+          // Acoplamiento preventivo: mayor radiación UV incrementa riesgo ocular
+          const coupledOcular = Math.min(98, Math.round(8 + ((val - 1) / 15) * 85));
+          appState.sim.ocularRisk = coupledOcular;
+          dom.sliderOcular.value = coupledOcular;
+          dom.valOcular.textContent = `${coupledOcular}%`;
+          recalculateAndRenderAll();
+        });
+
+        dom.sliderPressure.addEventListener('input', (e) => {
+          const val = Number(e.target.value);
+          appState.sim.pressureHpa = val;
+          dom.valPressure.textContent = `${val} hPa`;
+          // Acoplamiento preventivo: menor presión barométrica incrementa riesgo cardiopulmonar por hipoxia
+          const hypoxiaFactor = Math.round(((1013 - val) / (1013 - 350)) * 82);
+          appState.sim.cardioRisk = Math.min(98, Math.max(10, hypoxiaFactor));
+          dom.sliderCardio.value = appState.sim.cardioRisk;
+          dom.valCardio.textContent = `${appState.sim.cardioRisk}%`;
+          recalculateAndRenderAll();
+        });
+
+        // Sliders Eje 2 (Clínica y Biomarcadores Salivales)
+        dom.sliderCardio.addEventListener('input', (e) => {
+          const val = Number(e.target.value);
+          appState.sim.cardioRisk = val;
+          dom.valCardio.textContent = `${val}%`;
+          recalculateAndRenderAll();
+        });
+
+        dom.sliderOcular.addEventListener('input', (e) => {
+          const val = Number(e.target.value);
+          appState.sim.ocularRisk = val;
+          dom.valOcular.textContent = `${val}%`;
+          recalculateAndRenderAll();
+        });
+
+        dom.sliderCortisol.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          appState.sim.cortisol = val;
+          dom.valCortisol.textContent = `${val.toFixed(1)} nmol/L`;
+          recalculateAndRenderAll();
+        });
+
+        dom.sliderSiga.addEventListener('input', (e) => {
+          const val = Number(e.target.value);
+          appState.sim.sIga = val;
+          dom.valSiga.textContent = `${val} µg/mL`;
+          recalculateAndRenderAll();
+        });
+
+        // Selectores Eje 3 (Derecho de Protección Planetaria)
+        dom.selectCospar.addEventListener('change', (e) => {
+          appState.sim.cospar = e.target.value;
+          recalculateAndRenderAll();
+        });
+
+        dom.selectArtemis.addEventListener('change', (e) => {
+          appState.sim.artemis = e.target.value;
+          recalculateAndRenderAll();
+        });
+
+        // Botón Restablecer Orbital
+        dom.btnResetSim.addEventListener('click', () => {
+          selectPolygon(appState.selectedPolygonId);
+          showToast(`Parámetros orbitales de ${appState.selectedPolygonId} restablecidos.`, 'info');
+        });
+
+        // Botón Descargar GeoJSON
+        dom.btnDownloadGeoJSON.addEventListener('click', exportGeoJSON);
+
+        // Botón Copiar Dictamen
+        dom.btnCopyBrief.addEventListener('click', copyDictamenToClipboard);
+
+        // Selector Destino Planetario (Luna / Marte)
+        dom.targetButtons.forEach((btn) => {
+          btn.addEventListener('click', () => setOrbitalTarget(btn.dataset.target, true));
+        });
+
+        // Presets de porcentaje Swipe
+        dom.swipePresets.forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            updateSwipePosition(Number(btn.dataset.swipe));
+          });
+        });
+
+        // Eventos táctiles y de ratón para el comparador horizontal ArcGIS Swipe
+        let isDraggingSwipe = false;
+
+        const handlePointerSwipe = (clientX) => {
+          const rect = dom.swipeContainer.getBoundingClientRect();
+          const relX = clientX - rect.left;
+          const pct = (relX / rect.width) * 100;
+          updateSwipePosition(pct);
+        };
+
+        dom.swipeContainer.addEventListener('mousedown', (e) => {
+          isDraggingSwipe = true;
+          handlePointerSwipe(e.clientX);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDraggingSwipe) return;
+          handlePointerSwipe(e.clientX);
+        });
+
+        window.addEventListener('mouseup', () => {
+          isDraggingSwipe = false;
+        });
+
+        dom.swipeContainer.addEventListener(
+          'touchstart',
+          (e) => {
+            isDraggingSwipe = true;
+            if (e.touches.length > 0) {
+              handlePointerSwipe(e.touches[0].clientX);
+            }
+          },
+          { passive: true }
+        );
+
+        dom.swipeContainer.addEventListener(
+          'touchmove',
+          (e) => {
+            if (!isDraggingSwipe || e.touches.length === 0) return;
+            handlePointerSwipe(e.touches[0].clientX);
+          },
+          { passive: true }
+        );
+
+        window.addEventListener('touchend', () => {
+          isDraggingSwipe = false;
+        });
+      }
+
+      // Arranque inicial de YupizaEduca
+      initAllEvaluations();
+      bindEvents();
+      selectPolygon('P-01');
+      updateSwipePosition(50);
+    })();
+  </script>
+
+</body></html>
